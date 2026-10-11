@@ -1,0 +1,54 @@
+# Ignore build output
+/build/
+/bin/
+/debug/
+/x64/
+
+# Ignore compiler artifacts (objects, modules, libraries)
+*.o
+*.mod
+*.a
+*.lib
+
+# Ignore binaries (executables are distributed separately, if at all)
+*.exe
+*.dll
+
+# Ignore generated program output, but keep the directory itself
+/data/output/*
+!/data/output/.gitkeep
+
+# Ignore local notes and private working files
+/data/doc/
+/data/isl_ekf/
+*.tmp
+*.u2d
+
+# Ignore editor/assistant state
+.claude/
+
+# Ignore Visual Studio user files
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# Ignore Visual Studio temporary files
+*.tlog
+*.lastbuildstate
+*.unsuccessfulbuild
+
+# Ignore backup files
+*~
+*.bak
+*.backup
+
+# Ignore OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

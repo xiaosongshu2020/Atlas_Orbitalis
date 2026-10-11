@@ -1,0 +1,5 @@
+57445  57624			! 初始时刻，天和天内秒
+60				! 时间间隔，sec
+2880				! 时间序列点数
+3				! elements type
+this is the introduction!

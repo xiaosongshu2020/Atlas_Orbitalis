@@ -1,0 +1,9 @@
+1		! number of satellites
+1		! first satellite's ID
+HY-2A		! first satellite's name
+MJD		! epoch type, support: 'JD', 'MJD', 'YMD', 'BDT', 'TDT'
+57445 57624	! epoch
+cartesian		! states type, surport: 'cartesian', 'kepler', units are km, km/s, deg
+-779 1394 -7176 2.54 6.81 1.04
+0.3   0.02   2.2  0.01 15 130		! reflectivity, area-mass ratio of SRP (m^2/kg), Cd, area-mass ratio of drag (m^2/kg), Ap, F10.7
+50 1 1 1 1 1 1 1 0			! dynamic model, values are: order of gravity, tesseral, lunar gravity, lunar solid tide, solar gravity, solar solid tide, SRP, drag, post-Newtonian effect, CRTBP, usePV

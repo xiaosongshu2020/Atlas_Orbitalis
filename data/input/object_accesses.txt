@@ -1,0 +1,30 @@
+1				
+1  14  102  0  1  0	
+2  17  102  102  2  1
+
+
+----------------------------------------
+
+line1 - numebr of the accesses
+line2 - access NO.; observation type; from type; to type; from NO.; to NO.;
+line3 - next access, the same format as line2.
+
+----------------------------------------
+
+notes:
+1, obervation type:
+	11 - (alpha, delta), celestial equatorial coordinate system
+	12 - (A, h, r, rd), horizontal coordinate system, ranging and ranging rate
+	13 - (r), ranging
+	14 - (x, y, z, xd, yd, zd), GNSS
+	15 - (x, y, z), Position
+	16 - (A, h), horizontal coordinate system
+	17 - (r, rd)
+
+2, from type / to type: 
+	type of the transmitter / reciever
+	101 - is station
+	102 - is satellite
+
+3, from NO. / to NO.: 
+	number of the transmitter / reciever

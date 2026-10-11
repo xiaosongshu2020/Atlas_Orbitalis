@@ -1,0 +1,19 @@
+# Normalize line endings in the repository; check out per platform.
+* text=auto
+
+# Fortran sources (free- and fixed-form) are plain ASCII/UTF-8 text
+*.f90  text
+*.for  text
+
+# Data tables are text, but they are read positionally by the Fortran code --
+# never let a client-side conversion change them.
+*.txt  text
+
+# Never treat these as text: line-ending or encoding conversion would corrupt them.
+*.jpg  binary
+*.png  binary
+*.pdf  binary
+*.lib  binary
+*.exe  binary
+data/AtlasData/JPLEPH_DE440        binary
+data/AtlasData/JPLEPH_DE440_linux  binary

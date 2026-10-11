@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application" Version="11.0" ProjectIdGuid="{16C1D6F5-8B26-4C68-8012-76C6E819516E}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/>
+	</Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" UseCompiler="ifxCompiler">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/Gs8192" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" OpenMP="OpenMPParallelCode" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true"/>
+			<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="1000000000"/>
+			<Tool Name="VFResourceCompilerTool"/>
+			<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+			<Tool Name="VFCustomBuildTool"/>
+			<Tool Name="VFPreLinkEventTool"/>
+			<Tool Name="VFPreBuildEventTool"/>
+			<Tool Name="VFPostBuildEventTool"/>
+			<Tool Name="VFManifestTool" SuppressStartupBanner="true"/>
+		</Configuration>
+		<Configuration Name="Debug|x64" UseCompiler="ifxCompiler" TargetName="AtlasProgram">
+			<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL"/>
+			<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="500000000" LargeAddressAware="addrAwareLarge"/>
+			<Tool Name="VFResourceCompilerTool"/>
+			<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+			<Tool Name="VFCustomBuildTool"/>
+			<Tool Name="VFPreLinkEventTool"/>
+			<Tool Name="VFPreBuildEventTool"/>
+			<Tool Name="VFPostBuildEventTool"/>
+			<Tool Name="VFManifestTool" SuppressStartupBanner="true"/>
+		</Configuration>
+		<Configuration Name="Release|Win32" UseCompiler="ifxCompiler">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/Gs8192" SuppressStartupBanner="true" OpenMP="OpenMPParallelCode"/>
+			<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole" StackReserveSize="200000000" StackCommitSize="200000000" LargeAddressAware="addrAwareLarge"/>
+			<Tool Name="VFResourceCompilerTool"/>
+			<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+			<Tool Name="VFCustomBuildTool"/>
+			<Tool Name="VFPreLinkEventTool"/>
+			<Tool Name="VFPreBuildEventTool"/>
+			<Tool Name="VFPostBuildEventTool"/>
+			<Tool Name="VFManifestTool" SuppressStartupBanner="true"/>
+		</Configuration>
+		<Configuration Name="Release|x64" UseCompiler="ifxCompiler" TargetName="AtlasProgram">
+			<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true"/>
+			<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole" StackReserveSize="500000000" LargeAddressAware="addrAwareLarge"/>
+			<Tool Name="VFResourceCompilerTool"/>
+			<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+			<Tool Name="VFCustomBuildTool"/>
+			<Tool Name="VFPreLinkEventTool"/>
+			<Tool Name="VFPreBuildEventTool"/>
+			<Tool Name="VFPostBuildEventTool"/>
+			<Tool Name="VFManifestTool" SuppressStartupBanner="true"/>
+		</Configuration>
+	</Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd;h;inc"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+			<Filter Name="app">
+				<File RelativePath=".\app\satellite.f90"/>
+			</Filter>
+			<Filter Name="src">
+				<Filter Name="sofa">
+					<File RelativePath=".\sofa\a2af.for"/>
+					<File RelativePath=".\sofa\a2tf.for"/>
+					<File RelativePath=".\sofa\ab.for"/>
+					<File RelativePath=".\sofa\ae2hd.for"/>
+					<File RelativePath=".\sofa\af2a.for"/>
+					<File RelativePath=".\sofa\anp.for"/>
+					<File RelativePath=".\sofa\anpm.for"/>
+					<File RelativePath=".\sofa\apcg.for"/>
+					<File RelativePath=".\sofa\apcg13.for"/>
+					<File RelativePath=".\sofa\apci.for"/>
+					<File RelativePath=".\sofa\apci13.for"/>
+					<File RelativePath=".\sofa\apco.for"/>
+					<File RelativePath=".\sofa\apco13.for"/>
+					<File RelativePath=".\sofa\apcs.for"/>
+					<File RelativePath=".\sofa\apcs13.for"/>
+					<File RelativePath=".\sofa\aper.for"/>
+					<File RelativePath=".\sofa\aper13.for"/>
+					<File RelativePath=".\sofa\apio.for"/>
+					<File RelativePath=".\sofa\apio13.for"/>
+					<File RelativePath=".\sofa\atcc13.for"/>
+					<File RelativePath=".\sofa\atccq.for"/>
+					<File RelativePath=".\sofa\atci13.for"/>
+					<File RelativePath=".\sofa\atciq.for"/>
+					<File RelativePath=".\sofa\atciqn.for"/>
+					<File RelativePath=".\sofa\atciqz.for"/>
+					<File RelativePath=".\sofa\atco13.for"/>
+					<File RelativePath=".\sofa\atic13.for"/>
+					<File RelativePath=".\sofa\aticq.for"/>
+					<File RelativePath=".\sofa\aticqn.for"/>
+					<File RelativePath=".\sofa\atio13.for"/>
+					<File RelativePath=".\sofa\atioq.for"/>
+					<File RelativePath=".\sofa\atoc13.for"/>
+					<File RelativePath=".\sofa\atoi13.for"/>
+					<File RelativePath=".\sofa\atoiq.for"/>
+					<File RelativePath=".\sofa\bi00.for"/>
+					<File RelativePath=".\sofa\bp00.for"/>
+					<File RelativePath=".\sofa\bp06.for"/>
+					<File RelativePath=".\sofa\bpn2xy.for"/>
+					<File RelativePath=".\sofa\c2i00a.for"/>
+					<File RelativePath=".\sofa\c2i00b.for"/>
+					<File RelativePath=".\sofa\c2i06a.for"/>
+					<File RelativePath=".\sofa\c2ibpn.for"/>
+					<File RelativePath=".\sofa\c2ixy.for"/>
+					<File RelativePath=".\sofa\c2ixys.for"/>
+					<File RelativePath=".\sofa\c2s.for"/>
+					<File RelativePath=".\sofa\c2t00a.for"/>
+					<File RelativePath=".\sofa\c2t00b.for"/>
+					<File RelativePath=".\sofa\c2t06a.for"/>
+					<File RelativePath=".\sofa\c2tceo.for"/>
+					<File RelativePath=".\sofa\c2tcio.for"/>
+					<File RelativePath=".\sofa\c2teqx.for"/>
+					<File RelativePath=".\sofa\c2tpe.for"/>
+					<File RelativePath=".\sofa\c2txy.for"/>
+					<File RelativePath=".\sofa\cal2jd.for"/>
+					<File RelativePath=".\sofa\cp.for"/>
+					<File RelativePath=".\sofa\cpv.for"/>
+					<File RelativePath=".\sofa\cr.for"/>
+					<File RelativePath=".\sofa\d2dtf.for"/>
+					<File RelativePath=".\sofa\d2tf.for"/>
+					<File RelativePath=".\sofa\dat.for"/>
+					<File RelativePath=".\sofa\dtdb.for"/>
+					<File RelativePath=".\sofa\dtf2d.for"/>
+					<File RelativePath=".\sofa\eceq06.for"/>
+					<File RelativePath=".\sofa\ecm06.for"/>
+					<File RelativePath=".\sofa\ee00.for"/>
+					<File RelativePath=".\sofa\ee00a.for"/>
+					<File RelativePath=".\sofa\ee00b.for"/>
+					<File RelativePath=".\sofa\ee06a.for"/>
+					<File RelativePath=".\sofa\eect00.for"/>
+					<File RelativePath=".\sofa\eform.for"/>
+					<File RelativePath=".\sofa\eo06a.for"/>
+					<File RelativePath=".\sofa\eors.for"/>
+					<File RelativePath=".\sofa\epb.for"/>
+					<File RelativePath=".\sofa\epb2jd.for"/>
+					<File RelativePath=".\sofa\epj.for"/>
+					<File RelativePath=".\sofa\epj2jd.for"/>
+					<File RelativePath=".\sofa\epv00.for"/>
+					<File RelativePath=".\sofa\eqec06.for"/>
+					<File RelativePath=".\sofa\eqeq94.for"/>
+					<File RelativePath=".\sofa\era00.for"/>
+					<File RelativePath=".\sofa\fad03.for"/>
+					<File RelativePath=".\sofa\fae03.for"/>
+					<File RelativePath=".\sofa\faf03.for"/>
+					<File RelativePath=".\sofa\faju03.for"/>
+					<File RelativePath=".\sofa\fal03.for"/>
+					<File RelativePath=".\sofa\falp03.for"/>
+					<File RelativePath=".\sofa\fama03.for"/>
+					<File RelativePath=".\sofa\fame03.for"/>
+					<File RelativePath=".\sofa\fane03.for"/>
+					<File RelativePath=".\sofa\faom03.for"/>
+					<File RelativePath=".\sofa\fapa03.for"/>
+					<File RelativePath=".\sofa\fasa03.for"/>
+					<File RelativePath=".\sofa\faur03.for"/>
+					<File RelativePath=".\sofa\fave03.for"/>
+					<File RelativePath=".\sofa\fk425.for"/>
+					<File RelativePath=".\sofa\fk45z.for"/>
+					<File RelativePath=".\sofa\fk524.for"/>
+					<File RelativePath=".\sofa\fk52h.for"/>
+					<File RelativePath=".\sofa\fk54z.for"/>
+					<File RelativePath=".\sofa\fk5hip.for"/>
+					<File RelativePath=".\sofa\fk5hz.for"/>
+					<File RelativePath=".\sofa\fw2m.for"/>
+					<File RelativePath=".\sofa\fw2xy.for"/>
+					<File RelativePath=".\sofa\g2icrs.for"/>
+					<File RelativePath=".\sofa\gc2gd.for"/>
+					<File RelativePath=".\sofa\gc2gde.for"/>
+					<File RelativePath=".\sofa\gd2gc.for"/>
+					<File RelativePath=".\sofa\gd2gce.for"/>
+					<File RelativePath=".\sofa\gmst00.for"/>
+					<File RelativePath=".\sofa\gmst06.for"/>
+					<File RelativePath=".\sofa\gmst82.for"/>
+					<File RelativePath=".\sofa\gst00a.for"/>
+					<File RelativePath=".\sofa\gst00b.for"/>
+					<File RelativePath=".\sofa\gst06.for"/>
+					<File RelativePath=".\sofa\gst06a.for"/>
+					<File RelativePath=".\sofa\gst94.for"/>
+					<File RelativePath=".\sofa\h2fk5.for"/>
+					<File RelativePath=".\sofa\hd2ae.for"/>
+					<File RelativePath=".\sofa\hd2pa.for"/>
+					<File RelativePath=".\sofa\hfk5z.for"/>
+					<File RelativePath=".\sofa\icrs2g.for"/>
+					<File RelativePath=".\sofa\ir.for"/>
+					<File RelativePath=".\sofa\jd2cal.for"/>
+					<File RelativePath=".\sofa\jdcalf.for"/>
+					<File RelativePath=".\sofa\ld.for"/>
+					<File RelativePath=".\sofa\ldn.for"/>
+					<File RelativePath=".\sofa\ldsun.for"/>
+					<File RelativePath=".\sofa\lteceq.for"/>
+					<File RelativePath=".\sofa\ltecm.for"/>
+					<File RelativePath=".\sofa\lteqec.for"/>
+					<File RelativePath=".\sofa\ltp.for"/>
+					<File RelativePath=".\sofa\ltpb.for"/>
+					<File RelativePath=".\sofa\ltpecl.for"/>
+					<File RelativePath=".\sofa\ltpequ.for"/>
+					<File RelativePath=".\sofa\moon98.for"/>
+					<File RelativePath=".\sofa\num00a.for"/>
+					<File RelativePath=".\sofa\num00b.for"/>
+					<File RelativePath=".\sofa\num06a.for"/>
+					<File RelativePath=".\sofa\numat.for"/>
+					<File RelativePath=".\sofa\nut00a.for"/>
+					<File RelativePath=".\sofa\nut00b.for"/>
+					<File RelativePath=".\sofa\nut06a.for"/>
+					<File RelativePath=".\sofa\nut80.for"/>
+					<File RelativePath=".\sofa\nutm80.for"/>
+					<File RelativePath=".\sofa\obl06.for"/>
+					<File RelativePath=".\sofa\obl80.for"/>
+					<File RelativePath=".\sofa\p06e.for"/>
+					<File RelativePath=".\sofa\p2pv.for"/>
+					<File RelativePath=".\sofa\p2s.for"/>
+					<File RelativePath=".\sofa\pap.for"/>
+					<File RelativePath=".\sofa\pas.for"/>
+					<File RelativePath=".\sofa\pb06.for"/>
+					<File RelativePath=".\sofa\pdp.for"/>
+					<File RelativePath=".\sofa\pfw06.for"/>
+					<File RelativePath=".\sofa\plan94.for"/>
+					<File RelativePath=".\sofa\pm.for"/>
+					<File RelativePath=".\sofa\pmat00.for"/>
+					<File RelativePath=".\sofa\pmat06.for"/>
+					<File RelativePath=".\sofa\pmat76.for"/>
+					<File RelativePath=".\sofa\pmp.for"/>
+					<File RelativePath=".\sofa\pmpx.for"/>
+					<File RelativePath=".\sofa\pmsafe.for"/>
+					<File RelativePath=".\sofa\pn.for"/>
+					<File RelativePath=".\sofa\pn00.for"/>
+					<File RelativePath=".\sofa\pn00a.for"/>
+					<File RelativePath=".\sofa\pn00b.for"/>
+					<File RelativePath=".\sofa\pn06.for"/>
+					<File RelativePath=".\sofa\pn06a.for"/>
+					<File RelativePath=".\sofa\pnm00a.for"/>
+					<File RelativePath=".\sofa\pnm00b.for"/>
+					<File RelativePath=".\sofa\pnm06a.for"/>
+					<File RelativePath=".\sofa\pnm80.for"/>
+					<File RelativePath=".\sofa\pom00.for"/>
+					<File RelativePath=".\sofa\ppp.for"/>
+					<File RelativePath=".\sofa\ppsp.for"/>
+					<File RelativePath=".\sofa\pr00.for"/>
+					<File RelativePath=".\sofa\prec76.for"/>
+					<File RelativePath=".\sofa\pv2p.for"/>
+					<File RelativePath=".\sofa\pv2s.for"/>
+					<File RelativePath=".\sofa\pvdpv.for"/>
+					<File RelativePath=".\sofa\pvm.for"/>
+					<File RelativePath=".\sofa\pvmpv.for"/>
+					<File RelativePath=".\sofa\pvppv.for"/>
+					<File RelativePath=".\sofa\pvstar.for"/>
+					<File RelativePath=".\sofa\pvtob.for"/>
+					<File RelativePath=".\sofa\pvu.for"/>
+					<File RelativePath=".\sofa\pvup.for"/>
+					<File RelativePath=".\sofa\pvxpv.for"/>
+					<File RelativePath=".\sofa\pxp.for"/>
+					<File RelativePath=".\sofa\refco.for"/>
+					<File RelativePath=".\sofa\rm2v.for"/>
+					<File RelativePath=".\sofa\rv2m.for"/>
+					<File RelativePath=".\sofa\rx.for"/>
+					<File RelativePath=".\sofa\rxp.for"/>
+					<File RelativePath=".\sofa\rxpv.for"/>
+					<File RelativePath=".\sofa\rxr.for"/>
+					<File RelativePath=".\sofa\ry.for"/>
+					<File RelativePath=".\sofa\rz.for"/>
+					<File RelativePath=".\sofa\s00.for"/>
+					<File RelativePath=".\sofa\s00a.for"/>
+					<File RelativePath=".\sofa\s00b.for"/>
+					<File RelativePath=".\sofa\s06.for"/>
+					<File RelativePath=".\sofa\s06a.for"/>
+					<File RelativePath=".\sofa\s2c.for"/>
+					<File RelativePath=".\sofa\s2p.for"/>
+					<File RelativePath=".\sofa\s2pv.for"/>
+					<File RelativePath=".\sofa\s2xpv.for"/>
+					<File RelativePath=".\sofa\sepp.for"/>
+					<File RelativePath=".\sofa\seps.for"/>
+					<File RelativePath=".\sofa\sp00.for"/>
+					<File RelativePath=".\sofa\starpm.for"/>
+					<File RelativePath=".\sofa\starpv.for"/>
+					<File RelativePath=".\sofa\sxp.for"/>
+					<File RelativePath=".\sofa\sxpv.for"/>
+					<File RelativePath=".\sofa\taitt.for">
+					</File>
+					<File RelativePath=".\sofa\taiut1.for"/>
+					<File RelativePath=".\sofa\taiutc.for"/>
+					<File RelativePath=".\sofa\tcbtdb.for"/>
+					<File RelativePath=".\sofa\tcgtt.for"/>
+					<File RelativePath=".\sofa\tdbtcb.for"/>
+					<File RelativePath=".\sofa\tdbtt.for"/>
+					<File RelativePath=".\sofa\tf2a.for"/>
+					<File RelativePath=".\sofa\tf2d.for"/>
+					<File RelativePath=".\sofa\tpors.for"/>
+					<File RelativePath=".\sofa\tporv.for"/>
+					<File RelativePath=".\sofa\tpsts.for"/>
+					<File RelativePath=".\sofa\tpstv.for"/>
+					<File RelativePath=".\sofa\tpxes.for"/>
+					<File RelativePath=".\sofa\tpxev.for"/>
+					<File RelativePath=".\sofa\tr.for"/>
+					<File RelativePath=".\sofa\trxp.for"/>
+					<File RelativePath=".\sofa\trxpv.for"/>
+					<File RelativePath=".\sofa\tttai.for"/>
+					<File RelativePath=".\sofa\tttcg.for"/>
+					<File RelativePath=".\sofa\tttdb.for"/>
+					<File RelativePath=".\sofa\ttut1.for"/>
+					<File RelativePath=".\sofa\ut1tai.for"/>
+					<File RelativePath=".\sofa\ut1tt.for"/>
+					<File RelativePath=".\sofa\ut1utc.for"/>
+					<File RelativePath=".\sofa\utctai.for"/>
+					<File RelativePath=".\sofa\utcut1.for"/>
+					<File RelativePath=".\sofa\xy06.for"/>
+					<File RelativePath=".\sofa\xys00a.for"/>
+					<File RelativePath=".\sofa\xys00b.for"/>
+					<File RelativePath=".\sofa\xys06a.for"/>
+					<File RelativePath=".\sofa\zp.for"/>
+					<File RelativePath=".\sofa\zpv.for"/>
+					<File RelativePath=".\sofa\zr.for"/>
+				</Filter>
+				<File RelativePath=".\src\module_access.f90"/>
+				<File RelativePath=".\src\module_Atlas.f90"/>
+				<File RelativePath=".\src\module_atmosphere.f90"/>
+				<File RelativePath=".\src\module_attitude.f90"/>
+				<File RelativePath=".\src\module_cartesian.f90"/>
+				<File RelativePath=".\src\module_clock.f90"/>
+				<File RelativePath=".\src\module_const.f90"/>
+				<File RelativePath=".\src\module_CRTBP.f90"/>
+				<File RelativePath=".\src\module_EarthRadiationPressure.f90"/>
+				<File RelativePath=".\src\module_elements.f90"/>
+				<File RelativePath=".\src\module_EOPParam.f90"/>
+				<File RelativePath=".\src\module_ErrorHandler.f90"/>
+				<File RelativePath=".\src\module_fastPrediction.f90"/>
+				<File RelativePath=".\src\module_FileDef.f90"/>
+				<File RelativePath=".\src\module_Gravity.f90"/>
+				<File RelativePath=".\src\module_halo.f90"/>
+				<File RelativePath=".\src\module_IODor.f90"/>
+				<File RelativePath=".\src\module_lambert.f90"/>
+				<File RelativePath=".\src\module_LissajousOrbit.f90"/>
+				<File RelativePath=".\src\module_MathsMatrix.f90"/>
+				<File RelativePath=".\src\module_matrix.f90"/>
+				<File RelativePath=".\src\module_ODor.f90"/>
+				<File RelativePath=".\src\module_orbitPredictionNumerical.f90"/>
+				<File RelativePath=".\src\module_perturbationPN.f90"/>
+				<File RelativePath=".\src\module_perturbationSRP.f90"/>
+				<File RelativePath=".\src\module_perturbationThirdBody.f90"/>
+				<File RelativePath=".\src\module_planets.f90"/>
+				<File RelativePath=".\src\module_progressBar.f90"/>
+				<File RelativePath=".\src\module_randum.f90"/>
+				<File RelativePath=".\src\module_residual.f90"/>
+				<File RelativePath=".\src\module_rotator.f90"/>
+				<File RelativePath=".\src\module_satellite.f90"/>
+				<File RelativePath=".\src\module_satelliteScenario.f90"/>
+				<File RelativePath=".\src\module_SLE.f90"/>
+				<File RelativePath=".\src\module_sp3.f90"/>
+				<File RelativePath=".\src\module_space.f90"/>
+				<File RelativePath=".\src\module_station.f90"/>
+				<File RelativePath=".\src\module_String.f90"/>
+				<File RelativePath=".\src\module_thruster.f90"/>
+				<File RelativePath=".\src\module_time.f90"/>
+				<File RelativePath=".\src\module_timeSeries.f90"/>
+				<File RelativePath=".\src\module_toolKits.f90"/>
+				<File RelativePath=".\src\nrlmsise00_driver.for"/>
+				<File RelativePath=".\src\nrlmsise00_sub.for"/>
+				<File RelativePath=".\src\PLEPH.for"/>
+			</Filter>
+			<Filter Name="test"/>
+		</Filter>
+	</Files>
+	<Globals/>
+</VisualStudioProject>

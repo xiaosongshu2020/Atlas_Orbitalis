@@ -1,0 +1,15 @@
+##############################################################################
+# Atlas Orbitalis - satellite clock offset data
+# generator   : Atlas (Atlas Orbitalis)
+# object      : MEO2
+# data type   : CLOCK_OFFSET (seconds)
+# calc method : FORMULA (1)
+# bias0       : -2.80017570E-09 s
+# drift       : 8.00761861E-15 s/s
+# drift2      : -1.00059631E-19 s/s^2
+# noise       : 0.00000000E+00 s
+# t0          : 60676.000000000000 MJD (UTC)  = 2025-01-01 00:00:00.000
+# epochs      : 0
+# data format : MJD_day  MJD_sec  Bias/s
+# note        : header lines start with '#', blank lines are skipped on reading
+##############################################################################

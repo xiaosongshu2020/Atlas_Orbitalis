@@ -1,0 +1,12 @@
+Simulated observation data by GODT.
+Optical telescope observation data in J2000.
+Each line of data consists of time(UTC in MJD, day and sec), Azimuth and Elevation.
+    Day         Sec     Azi/deg     Ele/deg
+  -----  ----------  ----------  ----------
+  59945   77940.000   131.41578    42.53999
+  59945   78000.000   130.06971    26.65168
+  59945   78060.000   129.55595    17.12790
+  59945   78120.000   129.31205    10.61666
+  59945   83880.000   240.58009    11.27196
+  59945   83940.000   227.12397    11.87256
+  59945   84000.000   213.86789    11.11658
