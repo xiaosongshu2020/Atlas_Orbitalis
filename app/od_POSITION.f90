@@ -5,7 +5,7 @@
 !**************************************************************************
 program od_position
 use module_access, only : OBS_TYPE_POSITION
-use module_ODdemo
+use od_demo_common
 implicit none
 
 call runODdemo(OBS_TYPE_POSITION, "POSITION")

@@ -43,7 +43,7 @@ LEVEL5 = module_station.f90 module_satellite.f90 module_access.f90 \
          module_residual.f90 module_satelliteScenario.f90 \
          module_IODor.f90 module_ODor.f90
 
-LEVEL6 = module_Atlas.f90 module_ODdemo.f90
+LEVEL6 = module_Atlas.f90
 
 FOR_FILES = PLEPH.for nrlmsise00_driver.for nrlmsise00_sub.for
 
@@ -80,8 +80,12 @@ $(SOFA_LIB): $(SOFA_OBJS)
 # 自动发现 app/ 和 test/ 下的程序
 #===============================================================================
 
-APP_SRCS = $(wildcard $(APP_DIR)/*.f90)
+# od_demo_common.f90 is a module shared by the od_* demos, not a program:
+# exclude it from app auto-discovery and link its object explicitly below.
+APP_SRCS = $(filter-out $(APP_DIR)/od_demo_common.f90, $(wildcard $(APP_DIR)/*.f90))
 TEST_SRCS = $(wildcard $(TEST_DIR)/*.f90)
+OD_DEMO_COMMON_SRC = $(APP_DIR)/od_demo_common.f90
+OD_DEMO_COMMON_OBJ = $(BUILD_DIR)/od_demo_common.o
 
 # 可执行文件后缀：MinGW 下 gfortran 会自动给 -o 指定的名字补上 .exe。
 # 目标名必须与真实产物一致，否则规则声称产出 bin/xxx 而磁盘上只有 bin/xxx.exe，
@@ -115,6 +119,15 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.f90 | $(BUILD_DIR)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.for | $(BUILD_DIR)
 	$(FC) $(FFLAGS) -c $< -o $@ -J$(BUILD_DIR)
+
+# Shared demo module (app-level, not part of libatlas)
+$(OD_DEMO_COMMON_OBJ): $(OD_DEMO_COMMON_SRC) $(ATLAS_LIB) | $(BUILD_DIR)
+	$(FC) $(FFLAGS) -J$(BUILD_DIR) -I$(BUILD_DIR) -c $< -o $@
+
+# od_* demos additionally link the shared demo module
+$(BIN_DIR)/od_%$(EXE): $(APP_DIR)/od_%.f90 $(OD_DEMO_COMMON_OBJ) $(ATLAS_LIB) $(SOFA_LIB) | $(BIN_DIR)
+	$(FC) $(FFLAGS) -J$(BUILD_DIR) -I$(BUILD_DIR) -c $< -o $(BUILD_DIR)/od_$*.o
+	$(FC) $(FFLAGS) $(BUILD_DIR)/od_$*.o $(OD_DEMO_COMMON_OBJ) $(ATLAS_LIB) $(SOFA_FLAGS) -o $@
 
 $(BIN_DIR)/%$(EXE): $(APP_DIR)/%.f90 $(ATLAS_LIB) $(SOFA_LIB) | $(BIN_DIR)
 	$(FC) $(FFLAGS) -J$(BUILD_DIR) -I$(BUILD_DIR) -c $< -o $(BUILD_DIR)/$*.o

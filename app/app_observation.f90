@@ -53,6 +53,7 @@ type(type_access) :: ac
 REAL(8) :: kpl(6)                         ! Keplerian elements (normalized units)
 type(type_t), allocatable :: epochs(:)    ! trajectory output epochs
 CHARACTER(len=160) :: fname
+LOGICAL :: dirExists
 INTEGER :: i, k
 
 !---------------------- Time Setup Section ----------------------
@@ -61,8 +62,12 @@ te = timeAdd(t0, 1d0)                            ! 1 day arc
 
 !---------------------- Output Directory ----------------------
 ! saveAccessData opens the file directly and aborts if the directory is
-! missing, so create it first (same approach as app/halo_orbit.f90).
-call execute_command_line('mkdir "data/output/demo_observation"', wait=.true.)
+! missing, so create it first. Skip the shell call when it already exists:
+! mkdir on an existing directory prints a localized OS error.
+INQUIRE(FILE="data/output/demo_observation", EXIST=dirExists)
+IF (.NOT. dirExists) THEN
+    call execute_command_line('mkdir "data/output/demo_observation"', wait=.true.)
+END IF
 
 !---------------------- Scenario Establishment Section ----------------------
 WRITE(*,*) "Observation demo: all six observation types"

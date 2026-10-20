@@ -2805,7 +2805,7 @@ Atlas 提供了 15 个独立的命令行应用程序（`app/` 目录），每个
 
 ### 六种观测类型的批处理定轨演示（`od_*`）
 
-`od_RA_DEC`、`od_AZIMUTH_ELEVATION`、`od_RANGING`、`od_RANGERATE`、`od_POSITION`、`od_POSITION_VELOCITY` 分别使用一种观测类型，对同一颗 MEO 卫星做批处理最小二乘定轨。待估参数为笛卡尔位置速度（6 个）+ 1 个光压面质比（`type_varGroup%label = 3`，`nVar = 7`）。六个程序共享 `module_ODdemo` 中的场景与输出代码。
+`od_RA_DEC`、`od_AZIMUTH_ELEVATION`、`od_RANGING`、`od_RANGERATE`、`od_POSITION`、`od_POSITION_VELOCITY` 分别使用一种观测类型，对同一颗 MEO 卫星做批处理最小二乘定轨。待估参数为笛卡尔位置速度（6 个）+ 1 个光压面质比（`type_varGroup%label = 3`，`nVar = 7`）。六个程序共享 `app/od_demo_common.f90` 中的场景与输出代码。
 
 每个程序在 `data/output/od_demo/` 下输出：
 
@@ -2817,6 +2817,8 @@ Atlas 提供了 15 个独立的命令行应用程序（`app/` 目录），每个
 | `<TYPE>_log.txt` | 迭代记录（迭代号、RMS、参数向量 x） |
 
 方位/仰角程序在 `module_ODor` 内部会先把 Az/El 转换为 RA/Dec 再估计（批处理雅可比只实现了 RA/Dec）；`_obs.txt` 仍是 Az/El，残差文件按 RA/Dec 记录。
+
+`od_MIXED` 同时输入 `RA_DEC`、`RANGING`、`RANGERATE` 三种观测（同一卫星、同一测站）做联合批处理定轨，估计量同样是位置速度 + `amrSRP`。输出 `MIXED_*_obs.txt`、`MIXED_eph.txt`、`MIXED_residuals_acc1..3.txt`、`MIXED_log.txt`。
 
 ## 15.5 演示与测试程序
 
@@ -2842,7 +2844,7 @@ Atlas 提供了 15 个独立的命令行应用程序（`app/` 目录），每个
 | `app_orbitDetermination` | `module_ODor`, `module_satelliteScenario` |
 | `satelliteScenario` | `module_satelliteScenario`, `module_access` |
 | `batch_GNSS` | `module_ODor`, `module_satellite` |
-| `od_*`（六种观测类型） | `module_ODdemo`, `module_ODor`, `module_satelliteScenario` |
+| `od_*`（六种观测类型） | `od_demo_common`（app 级）, `module_ODor`, `module_satelliteScenario` |
 | `batch_position_beidou` | `module_satellite`, `module_access` |
 | `ekf_angleData` | `module_ODor` (method=EKF) |
 | `prediction_thruster` | `module_thruster`, `module_satellite` |

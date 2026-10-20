@@ -7,7 +7,7 @@
 !**************************************************************************
 program od_azimuth_elevation
 use module_access, only : OBS_TYPE_AZIMUTH_ELEVATION
-use module_ODdemo
+use od_demo_common
 implicit none
 
 call runODdemo(OBS_TYPE_AZIMUTH_ELEVATION, "AZIMUTH_ELEVATION")

@@ -5,7 +5,7 @@
 !**************************************************************************
 program od_ranging
 use module_access, only : OBS_TYPE_RANGING
-use module_ODdemo
+use od_demo_common
 implicit none
 
 call runODdemo(OBS_TYPE_RANGING, "RANGING")

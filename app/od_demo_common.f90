@@ -1,8 +1,12 @@
 !================================================================================
-! MODULE: module_ODdemo
+! MODULE: od_demo_common
 !
-! Shared driver for the six single-observation-type orbit-determination demos
-! in app/od_*.f90.
+! Application-level shared driver for the six single-observation-type
+! orbit-determination demos in app/od_*.f90, plus the mixed-observation demo
+! app/od_MIXED.f90 (RA_DEC + RANGING + RANGERATE in one batch solve).
+! This is demo code, not part of the Atlas library, so it lives under app/.
+! The Makefile excludes this file from app auto-discovery (it has no main
+! program) and links its object into the od_* executables.
 !
 ! Scenario (identical for all six programs):
 !   - one MEO satellite: a = 27906.1 km, e = 0.001, i = 55 deg
@@ -22,7 +26,7 @@
 !
 ! Author: Shawn Hu
 !================================================================================
-module module_ODdemo
+module od_demo_common
 
     use module_const
     use module_time, only : type_t, timeAdd
@@ -38,9 +42,24 @@ module module_ODdemo
 
     implicit none
     private
-    public :: runODdemo
+    public :: runODdemo, runMixedODdemo
 
 contains
+
+    !==========================================================================
+    ! Create a directory only when it does not exist. A bare mkdir on an
+    ! existing directory prints a localized OS error (GBK on this machine).
+    !==========================================================================
+    subroutine ensureDir(path)
+    implicit none
+    character(len=*), intent(in) :: path
+    logical :: exists
+
+    inquire(file = trim(path), exist = exists)
+    if (.not. exists) then
+        call execute_command_line('mkdir "'//trim(path)//'"', wait = .true.)
+    endif
+    end subroutine ensureDir
 
     !==========================================================================
     ! Run one observation-type OD demo.
@@ -94,7 +113,7 @@ contains
     character(len=80)  :: rmsStr
 
     !---------------- output directory --------------------------------------
-    call execute_command_line('mkdir "data/output/od_demo"', wait=.true.)
+    call ensureDir("data/output/od_demo")
 
     !---------------- time and scenario -------------------------------------
     call t0%init(2025d0, 1d0, 1d0, 0d0, 0d0, 0d0)
@@ -234,4 +253,186 @@ contains
 
     end subroutine runODdemo
 
-end module module_ODdemo
+    !==========================================================================
+    ! Mixed-observation batch OD demo:
+    !   angle (RA_DEC) + range (RANGING) + range-rate (RANGERATE) at the same
+    !   time, all from the same MEO satellite and Beijing station.
+    ! The estimated parameter set is the same Cartesian state + amrSRP (7).
+    !==========================================================================
+    subroutine runMixedODdemo()
+    implicit none
+
+    real(8), parameter :: step        = 60d0
+    real(8), parameter :: arcDay      = 2d0
+    real(8), parameter :: aKm         = 27906.1d0
+    real(8), parameter :: ecc         = 0.001d0
+    real(8), parameter :: incDeg      = 55d0
+    real(8), parameter :: satMass     = 1000d0
+    real(8), parameter :: reflectivity = 0.5d0
+    real(8), parameter :: srpTruth    = 0.02d0
+    real(8), parameter :: srpGuess    = 0.025d0
+    integer, parameter :: gravityDegree = 12
+    integer, parameter :: gravityOrder  = 12
+    real(8), parameter :: posPert(3) = (/ 50d0, -80d0, 120d0 /)
+    real(8), parameter :: velPert(3) = (/ 0.005d0, -0.008d0, 0.006d0 /)
+    character(len=*), parameter :: staName = "Beijing"
+    real(8), parameter :: staLon = 116.4d0, staLat = 39.9d0, staAlt = 50d0
+    real(8), parameter :: minEle = 5d0
+    character(len=*), parameter :: outDir = "data/output/od_demo/"
+    character(len=*), parameter :: tag = "MIXED"
+
+    ! The three observation types mixed in this run
+    integer, parameter :: mixTypes(3) = (/ OBS_TYPE_RA_DEC, OBS_TYPE_RANGING, &
+        &   OBS_TYPE_RANGERATE /)
+    character(len=16), parameter :: mixNames(3) = (/ character(len=16) :: &
+        &   "RA_DEC", "RANGING", "RANGERATE" /)
+
+    type(type_t) :: t0, te
+    type(type_satelliteScenario) :: ss
+    type(type_satellite) :: sat, truthSat
+    type(type_station)   :: sta
+    type(type_access)    :: ac
+    type(type_ODor)      :: ODor
+    type(type_varGroup)  :: Groups(1)
+    type(type_t), allocatable :: epochs(:)
+
+    real(8) :: kpl(6), cts(6), truth0(6), pvEst(6), pvTru(6), dr(3)
+    real(8) :: sum2, maxErr, rmsErr
+    integer :: i, k
+    character(len=240) :: fname, ephFile, resFile, logFile
+    character(len=200) :: intro
+    character(len=80)  :: rmsStr
+
+    call ensureDir("data/output/od_demo")
+
+    call t0%init(2025d0, 1d0, 1d0, 0d0, 0d0, 0d0)
+    te = timeAdd(t0, arcDay)
+
+    intro = "OD demo (MIXED): RA_DEC + RANGING + RANGERATE, state + amrSRP"
+    call ss%init(t0, te, step, STATE_TYPE_CARTESIAN, introduction = trim(intro))
+
+    ! truth satellite
+    kpl(1) = aKm * u_km
+    kpl(2) = ecc
+    kpl(3) = incDeg * deg
+    kpl(4) = 0d0
+    kpl(5) = 0d0
+    kpl(6) = 0d0
+    call kpl2cts(kpl, cts)
+
+    call sat%init(t0, cts, number = 1, name = "MEO", mass = satMass, &
+        &   eleType = STATE_TYPE_CARTESIAN, propagator = 'numerical', &
+        &   degree = gravityDegree, order = gravityOrder, &
+        &   reflectivity = reflectivity, amrSRP = srpTruth)
+    sat%opMod%usePV          = 1
+    sat%opMod%key_moonGravity = 1
+    sat%opMod%key_sunGravity  = 1
+    sat%opMod%key_srp         = 1
+    sat%opMod%SRP_Model       = 1
+    call ss%addSatellite(sat)
+
+    call sta%init(number = 1, name = staName, longitude = staLon, &
+        &   latitude = staLat, altitude = staAlt)
+    call ss%addStation(sta)
+
+    ! three colocated links, one per observation type
+    do i = 1, 3
+        call ac%init(number = i, name = trim(mixNames(i)), &
+            &   fromType = OBJECT_TYPE_SATELLITE, fromNum = 1, &
+            &   toType = OBJECT_TYPE_STATION, toNum = 1, &
+            &   obsType = mixTypes(i), minEle = minEle)
+        ac%shadow = .false.
+        ac%solarDistance = 0d0
+        ac%lunarDistance = 0d0
+        call ss%addAccess(ac)
+    enddo
+
+    allocate(epochs(ss%ts%n))
+    do i = 1, ss%ts%n
+        epochs(i) = ss%ts%time(i)
+    enddo
+
+    call ss%sat(1)%generateTrajectory(epochs)
+    call ss%station(1)%generateTrajectory(ss%ts)
+    truthSat = ss%sat(1)
+    truth0   = ss%sat(1)%states%elements
+
+    call ss%observation
+    write(*, "(A)") ""
+    write(*, "(A)") " mixed observation sets:"
+    do i = 1, ss%nAccess
+        fname = trim(outDir)//trim(tag)//"_"//trim(mixNames(i))//"_obs.txt"
+        call ss%access(i)%saveData(ss%ts, trim(fname))
+        write(*, "(A,A,A,I0,A,A)") "   ", trim(mixNames(i)), &
+            &   ": epochs = ", ss%access(i)%nData, "  -> ", trim(fname)
+        if (ss%access(i)%nData <= 0) then
+            print*, "ERROR @runMixedODdemo: no observations for ", trim(mixNames(i))
+            stop 1
+        endif
+    enddo
+
+    ! perturb the initial guess
+    ss%sat(1)%states%elements(1:3) = ss%sat(1)%states%elements(1:3) &
+        &   + posPert/(LENGTH_UNIT*1000d0)
+    ss%sat(1)%states%elements(4:6) = ss%sat(1)%states%elements(4:6) &
+        &   + velPert/(LENGTH_UNIT*1000d0)*TIME_UNIT
+    ss%sat(1)%opMod%amrSRP = srpGuess
+
+    Groups(1)%nVar   = 7
+    Groups(1)%label  = 3
+    Groups(1)%origin = 1
+    allocate(Groups(1)%idx(7))
+    Groups(1)%idx = (/ 1, 2, 3, 4, 5, 6, 7 /)
+
+    call ODor%init(ss, ss%ts%t0, 1, Groups, OD_METHOD_BATCH, intro = trim(intro))
+    logFile = trim(outDir)//trim(tag)//"_log.txt"
+    ODor%logFile = trim(logFile)
+    ODor%showProgress = .false.
+
+    call ODor%solve(ss)
+    call ODor%computeResiduals(ss)
+
+    resFile = trim(outDir)//trim(tag)//"_residuals"
+    call ODor%saveResiduals(trim(resFile))
+    ephFile = trim(outDir)//trim(tag)//"_eph.txt"
+    call ODor%saveEph(ss, trim(ephFile))
+
+    call resRMSstr(res%nAcc, rmsStr)
+    call cts_normal2SI(ss%sat(1)%states%elements, cts)
+    call cts_normal2SI(truth0, pvTru)
+
+    write(*, "(A)") ""
+    write(*, "(A)") "================ OD result: MIXED ================"
+    write(*, "(A,I0)") " iterations            : ", ODor%nIter
+    write(*, "(A,A)")  " final residual RMS    : ", trim(rmsStr)
+    write(*, "(A,3F14.3)") " estimated r0 (km)     : ", cts(1:3)
+    write(*, "(A,3F14.3)") " truth     r0 (km)     : ", pvTru(1:3)
+    write(*, "(A,3ES14.5)") " error dr (m)          : ", (cts(1:3) - pvTru(1:3))*1000d0
+    write(*, "(A,3ES14.5)") " error dv (m/s)        : ", (cts(4:6) - pvTru(4:6))*1000d0
+    write(*, "(A,2ES14.5)") " amrSRP est / truth    : ", ss%sat(1)%opMod%amrSRP, srpTruth
+
+    call ss%sat(1)%generateTrajectory(epochs)
+    sum2 = 0d0
+    maxErr = 0d0
+    do k = 1, ss%ts%n
+        pvEst = ss%sat(1)%getPV(epochs(k))
+        pvTru = truthSat%getPV(epochs(k))
+        dr = (pvEst(1:3) - pvTru(1:3))*LENGTH_UNIT*1000d0
+        sum2 = sum2 + dot_product(dr, dr)
+        maxErr = max(maxErr, norm2(dr))
+    enddo
+    rmsErr = dsqrt(sum2/dble(ss%ts%n))
+    write(*, "(A,ES12.3,A,ES12.3,A)") " ephemeris position error: RMS = ", rmsErr, &
+        &   " m, max = ", maxErr, " m"
+    write(*, "(A)") " saved: "//trim(ephFile)
+    write(*, "(A)") " saved: "//trim(resFile)//"_acc1.txt ... _acc3.txt"
+    write(*, "(A)") " saved: "//trim(logFile)
+    write(*, "(A)") "==================================================="
+
+    deallocate(Groups(1)%idx)
+    deallocate(epochs)
+    call ss%freeSS
+
+    end subroutine runMixedODdemo
+
+end module od_demo_common

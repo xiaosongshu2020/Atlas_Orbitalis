@@ -66,7 +66,7 @@ Defined by `LEVEL0`…`LEVEL6` in the [Makefile](Makefile); a module may only `u
 | **3** | Coordinates & attitude | `module_space`, `module_SLE`, `module_attitude`, `module_cartesian` |
 | **4** | Forces & integrator | `module_Gravity`, `module_atmosphere`, `module_perturbationPN/SRP/ThirdBody`, `module_thruster`, `module_orbitPredictionNumerical` |
 | **5** | Domain objects | `module_station`, `module_satellite`, `module_access`, `module_residual`, `module_satelliteScenario`, `module_IODor`, `module_ODor` |
-| **6** | Public API | `module_Atlas`; `module_ODdemo` (shared driver for the six `od_*` demos, not public API) |
+| **6** | Public API | `module_Atlas` |
 
 `module_EarthRadiationPressure` and `module_shadow` sit at Level 0 because both are self-contained (no Atlas `use` at all). `module_STM` (analytic STM, NSG2 only) has no dependencies, is **not in the Makefile** and is never compiled — add it to a `LEVEL` before using it.
 
@@ -201,6 +201,8 @@ There is **no `generateObservations()`** (manual only) — the entry point is `o
 
 Residual RMS is printed in **display units**, not normalized ones: `resUnitCode(obsType, jc)` maps each observation *component* to 1 = arcsec, 2 = m, 3 = m/s, 4 = raw (normalized), and `resRMSstr(nAcc, str)` pools `res%acc(1:nAcc)` into one RMS per unit group, e.g. `RMS = 6.99E+00 m, 6.40E-03 m/s` for POSITION_VELOCITY (position and velocity are never added into a single number — that sum has no physical meaning) or `RMS = 6.96E-02 arcsec` for Az-El. The convergence test still uses the normalized `res%RMS` from `calRMS`, untouched. Note the log's per-access line is *cumulative* over the accesses processed so far (pre-existing behaviour); the last one is the overall RMS shown in the iteration summary.
 
+Batch OD is already **per-access type-agnostic**: the `orbitDetermination_batch` access loop reads each access's own `npe`, reallocates `B`/`Y`/`W` when it changes, calls `calB`/`calDYDR` for that type, and accumulates all rows into the same `SLE`; `res%acc(iac)` and `saveData`/`calRes` are per access. Mixed types therefore need no structural change (only the label-3 SRP column was missing for Cartesian states). Caveats: `calW` still returns identity (`errStd` is informational), so mixed observations are equally weighted in normalized units, and `res%RMS` is a type-agnostic scalar stopping metric — `resRMSstr` is the physical, per-unit display. `saveResiduals` writes `_accN.txt` when there are several accesses.
+
 `type_ODor%logFile` (default `data/output/log_batchOD.txt`) redirects the batch iteration log, and `nIter` reports the iterations performed; `computeResiduals(ss)` recomputes final O−C residuals at the estimated state (the solve loop leaves them one update stale) and `saveResiduals(fn)` writes them per access. `stm_series_init` now builds the numerical **amrSRP column** for a Cartesian label-3 group (`dX/dx7`, via an `amrSRP` finite difference); it used to be zero, which made that parameter rank-deficient. `module_residual%calRes` wraps the periodic first residual component for RA/Dec and Az/El.
 
 `type_IODor` ([module_IODor.f90](src/module_IODor.f90)) — General Laplace: `init(maxDataLength)`, `solve(initialState)` (J2000 Cartesian, normalized), `show()`, `saveIODor(fn)`.
@@ -299,7 +301,7 @@ Common sets: Earth gravity only = `degree`/`order` alone (all switches 0); +luni
 
 ## Application programs
 
-22 programs in `app/`; only two are argument-driven CLIs (documented in `release/readme_*.md`) — the rest are demos/batch drivers with settings hard-coded in the source.
+23 programs in `app/`; only two are argument-driven CLIs (documented in `release/readme_*.md`) — the rest are demos/batch drivers with settings hard-coded in the source.
 
 | Program | Purpose |
 |---------|---------|
@@ -311,7 +313,8 @@ Common sets: Earth gravity only = `degree`/`order` alone (all switches 0); +luni
 | `batch_GNSS`, `batch_position_beidou`, `batch_AzimuthElevation`, `ekf_angleData` | Batch POD from GNSS PV / SP3 (BeiDou C06) / Az-El, EKF from RA-Dec |
 | `satellite`, `prediction_thruster` | `type_satellite` demos: trajectories, save/load, thruster ledger |
 | `navSat_simulation` | navSat scenario: 3 MEO satellites (Walker 3/3/1, Cartesian states) + Beijing station, 6 pairwise ranging links, non-zero satellite clocks → everything under `data/navSat/` (see its `README.md`) |
-| `od_RA_DEC`, `od_AZIMUTH_ELEVATION`, `od_RANGING`, `od_RANGERATE`, `od_POSITION`, `od_POSITION_VELOCITY` | Six single-observable batch POD demos sharing `module_ODdemo`: one MEO + Beijing, 2-day arc, Cartesian state + amrSRP (label 3), outputs in `data/output/od_demo/` (`_obs`, `_eph`, `_residuals`, `_log`) |
+| `od_RA_DEC`, `od_AZIMUTH_ELEVATION`, `od_RANGING`, `od_RANGERATE`, `od_POSITION`, `od_POSITION_VELOCITY` | Six single-observable batch POD demos sharing `app/od_demo_common.f90` (app-level module, excluded from auto-discovery and linked explicitly): one MEO + Beijing, 2-day arc, Cartesian state + amrSRP (label 3), outputs in `data/output/od_demo/` (`_obs`, `_eph`, `_residuals`, `_log`) |
+| `od_MIXED` | Mixed-observation version: RA_DEC + RANGING + RANGERATE in one batch solve, same MEO/station/parameters; per-access residual files |
 | `halo_orbit`, `cartesian`, `time` | Halo solution, coordinate transforms, time systems |
 
 The classic scenario configuration files in `data/input/` (`object_*.txt`) are **dead** — their only reader (`app_orbitDetermination.f90`) was deleted; `setting_orbitDetermination.txt`, the reference for the `key = value` format, has since been removed too.
@@ -363,7 +366,7 @@ The classic scenario configuration files in `data/input/` (`object_*.txt`) are *
 ## Known gaps, traps and stale artifacts
 
 **Build / tooling**
-- `make` is green: all 38 targets (22 `app/` + 16 `test/`) build.
+- `make` is green: all 39 targets (23 `app/` + 16 `test/`) build.
 - `src/module_STM.f90` is not in the Makefile and never compiles; nothing references it.
 - `test/test_lunar_gravity.f90` still reads `data/data_op/grail.txt` (directory gone).
 - `Atlas.vfproj` omits `module_shadow.f90` and registers one test; `x64/Release/` holds a stale `module_perturbationAspherical.obj`.
