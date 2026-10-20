@@ -88,7 +88,7 @@ On Windows/MinGW the binaries carry the `.exe` suffix, as above; on Linux they d
 
 ## Application Programs
 
-16 programs live in `app/`. Two are argument-driven command-line tools with dedicated references; the rest are demos and batch drivers whose settings are edited in the source.
+22 programs live in `app/`. Two are argument-driven command-line tools with dedicated references; the rest are demos and batch drivers whose settings are edited in the source.
 
 | Program | Purpose |
 |---------|---------|
@@ -100,6 +100,7 @@ On Windows/MinGW the binaries carry the `.exe` suffix, as above; on Linux they d
 | `batch_AzimuthElevation` | Batch POD from azimuth/elevation data |
 | `ekf_angleData` | Extended Kalman filter from RA/Dec data |
 | `observation_ranging` | Paired ranging observation simulation |
+| `od_RA_DEC`, `od_AZIMUTH_ELEVATION`, `od_RANGING`, `od_RANGERATE`, `od_POSITION`, `od_POSITION_VELOCITY` | Six single-observable batch POD demos (Cartesian state + amrSRP) → `data/output/od_demo/` |
 | `navSat_OD` | Batch POD of the navSat scenario (satellite orbits + clocks) |
 | `satelliteScenario` | Multi-satellite, multi-station access generation and observation simulation |
 | `navSat_simulation` | navSat scenario simulation: 3 MEO satellites + Beijing station, 6 ranging links → see [data/navSat/README.md](data/navSat/README.md) |

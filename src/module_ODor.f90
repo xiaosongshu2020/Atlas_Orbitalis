@@ -88,9 +88,15 @@
         ! 观测遍历阶段用本模块的进度条(以"已处理历元数"计)。默认关闭, 与
         ! type_opMod%showProgressBar 的默认一致。
         logical :: showProgress = .false.
+        ! 批处理迭代日志的路径。六种观测类型的演示程序依次运行时各写各的，
+        ! 缺省值保持与旧程序一致。
+        character(len=200) :: logFile = "data/output/log_batchOD.txt"
+        integer :: nIter = 0          ! 实际完成的迭代次数(solve 填写)
     contains
         procedure :: init => initialize_ODor ! initialize ODor
         procedure :: solve => orbitDetermination_batch ! execute orbit determination (batch process)
+        procedure :: computeResiduals ! final O-C residuals at the estimated state
+        procedure :: saveResiduals    ! write residual files (one per access)
         procedure :: invoke ! update orbit with one data using the method of EKF
         procedure :: saveEph
         
@@ -609,6 +615,7 @@
     type(type_satellite) :: sat1, sat1p
     ! 进度显示
     integer :: nObsTot, nObsDone, nStride, tc0, tc1, tcAll0, tcRate
+    integer :: iosLog
     double precision :: tElap, tIter
     character(len=160) :: chr, chs
     character(len=80) :: rmsStr
@@ -634,8 +641,17 @@
     ! initialize residual
     call res%allocRes(this%nAccess)
     
-    open(901, file = "data/output/log_batchOD.txt")
-    
+    open(901, file = trim(this%logFile), status = 'replace', iostat = iosLog)
+    if (iosLog /= 0) then
+        print*, "error @orbitDetermination_batch: cannot open log file"
+        print*, trim(this%logFile)
+        stop
+    endif
+    write(901, "(A)") "# Atlas Orbitalis - batch OD iteration log"
+    write(901, "(A,A)") "# scenario  : ", trim(this%introduction)
+    write(901, "(A,I0)") "# variables : ", this%nVar
+    write(901, "(A)") "# note      : residual RMS below is the cumulative value over the accesses processed so far"
+
     print*, ""
     write(*, "(' o_o iteration ',I2)") 0
     write(901, "('> iteration ',I2)") 0
@@ -660,6 +676,7 @@
 
     RMSprev = 1d30
     do iIter = 1, 15
+        this%nIter = iIter
 
         nObsDone = 0
         if (this%showProgress) call system_clock(tc0, tcRate)
@@ -812,6 +829,67 @@
     if (allocated(W)) deallocate(W)    
     
     endsubroutine
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Recompute the O-C residuals at the final estimated state.
+    !
+    ! solve() evaluates residuals at the start of each iteration, i.e. before
+    ! that iteration's state update. The arrays left behind are therefore one
+    ! update stale. Call this after solve() and before saveResiduals().
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    subroutine computeResiduals(this, ss)
+    implicit none
+    class(type_ODor), intent(inout) :: this
+    type(type_satelliteScenario), intent(inout) :: ss
+    type(type_timeSeries) :: tso
+    type(type_access) :: accCal
+    integer :: i, aci
+
+    if (.not. allocated(res%acc)) call res%allocRes(this%nAccess)
+
+    do i = 1, this%nSat
+        call ss%sat(this%satIdx(i))%generateTrajectory(ss%ts%time)
+    enddo
+
+    do i = 1, this%nAccess
+        aci = this%accessIdx(i)
+        tso%time = ss%access(aci)%timeTable
+        tso%n = size(ss%access(aci)%timeTable)
+        accCal = ss%access(aci)
+        call observationAccess(ss, accCal, tso, .true.)
+        call res%acc(i)%calRes(ss%access(aci), accCal)
+        call res%calValidIdx(i)
+    enddo
+    call res%calRMS
+    end subroutine
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Write one residual file per access. With a single access the file name
+    ! is used verbatim; with several, _accN.txt is appended.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    subroutine saveResiduals(this, fn)
+    implicit none
+    class(type_ODor), intent(in) :: this
+    character(len=*), intent(in) :: fn
+    integer :: i
+    character(len=240) :: fname
+
+    if (.not. allocated(res%acc)) then
+        print*, "warning @saveResiduals: residuals are not allocated (call solve first)"
+        return
+    endif
+    if (res%nAcc < this%nAccess) then
+        print*, "warning @saveResiduals: residual array is smaller than the access list"
+        return
+    endif
+
+    if (this%nAccess == 1) then
+        call res%acc(1)%saveRes(fn)
+    else
+        do i = 1, this%nAccess
+            write(fname, "(A,A,I0,A)") trim(fn), "_acc", i, ".txt"
+            call res%acc(i)%saveRes(trim(fname))
+        enddo
+    endif
+    end subroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2523,7 +2601,7 @@
     integer, intent(in) :: nVar
     integer :: k, n, i, j, nCol
     double precision :: dt, STM8(8, 8)
-    double precision :: dSec, hCol, tNodeMJD
+    double precision :: dSec, hCol, hAmr, srpFactor, tNodeMJD
     double precision :: x0(6), xc(6), xr(6)
     double precision, allocatable :: xNom(:, :)
     type(type_fastOption) :: opt, optp
@@ -2571,12 +2649,13 @@
     ! 情形二: 数值 STM(笛卡尔状态的 label 1~4, 以及 label 5)。
     ! 状态列 6 个; label 5 再加前 (nVar-6) 个 ECOM 参数列。
     !------------------------------------------------------------------
-    if (label > 1 .and. label < 5) then
+    if (label == 2 .or. label == 4) then
         print*, "warning @stm_series_init: numerical STM gives state columns only;"// &
-            &   " for a Cartesian state the amr column of label ", label, " is set to 0"
+            &   " for a Cartesian state the drag amr column of label ", label, " is set to 0"
     endif
 
     nCol = 6
+    if (label == 3) nCol = min(nVar, 7) ! 6 状态列 + amrSRP 参数列
     if (label == 5) nCol = nVar         ! 6 状态列 + 前 (nVar-6) 个 ECOM 参数列
     x0 = sat%states%elements             ! 归一化笛卡尔状态(参数基点)
     opt = satFastOption(sat)
@@ -2598,6 +2677,15 @@
         if (j <= 6) then
             hCol = 1d-4                  ! 归一化状态步长(与 numericalSTM_ECOM 一致)
             xc(j) = xc(j) + hCol
+        elseif (label == 3) then
+            ! x(7) 是归一化光压加速度乘子:
+            !   x7 = amrSRP * mass_unit/(LU*1e3)^2 * (1+reflectivity) * rho_s
+            ! 对 amrSRP 施加 hAmr 的扰动, 再用对应的 x7 步长 hCol 作除数,
+            ! 得到的就是 dX/dx7 (与 SS2ODor/ODor2SS 的换算一致)。
+            srpFactor = mass_unit/(length_unit*1d3)**2 * (1d0 + opt%reflectivity) * rho_s
+            hAmr = max(1d-4, 1d-3*abs(opt%amrSRP))
+            hCol = hAmr*srpFactor
+            optp%amrSRP = opt%amrSRP + hAmr
         else
             hCol = 1d-6                  ! ECOM 参数步长(同上)
             optp%ECOM(j-6) = optp%ECOM(j-6) + hCol

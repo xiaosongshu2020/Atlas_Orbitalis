@@ -83,6 +83,13 @@
     this%nData = accO%nData
     this%timeTable = accO%timeTable
     this%res = accO%dataTable - accC%dataTable
+    ! Wrap the angular residual that is periodic. RA/Dec and Az/El both put
+    ! the first component in [0, 2*pi); without this, an observation crossing
+    ! the 0/2*pi seam produces a 2*pi outlier and wrecks the least-squares.
+    select case(this%obsType)
+    case(OBS_TYPE_RA_DEC, OBS_TYPE_AZIMUTH_ELEVATION)
+        this%res(:, 1) = modulo(this%res(:, 1) + pi, 2d0*pi) - pi
+    end select
     endsubroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! write residual data into files
@@ -91,18 +98,71 @@
     implicit none
     class(type_acc) :: this
     character(len=*), intent(in), optional :: fn
-    character*100 :: fn1
+    character(len=200) :: fn1
+    character(len=64) :: typeName, formatStr
+    character(len=80) :: unitStr
+    character(len=80) :: fmt
+    double precision :: scale(10)
+    integer :: i, j, unit, ios, nOut
     integer, save :: NO = 1
     !--------------------------------------------------------
+    if (.not. allocated(this%res)) return
     if (present(fn)) then
-        open(821, file = trim(fn))
+        fn1 = trim(fn)
     else
         write(fn1, "('data/output/res_',I3.3,'.txt')") NO
-        open(821, file = trim(fn1))
         NO = NO + 1
     endif
-    
-    close(821)
+
+    ! Residuals are stored normalized; write them in display units.
+    scale = 1d0
+    unitStr = "normalized"
+    select case(this%obsType)
+    case(OBS_TYPE_RA_DEC, OBS_TYPE_AZIMUTH_ELEVATION)
+        scale(1:2) = RAD2ARCSEC
+        unitStr = "arcsec  arcsec"
+    case(OBS_TYPE_RANGING)
+        scale(1) = 1d0/u_meter
+        unitStr = "m"
+    case(OBS_TYPE_RANGERATE)
+        scale(1) = 1d0/u_meter/TIME_UNIT
+        unitStr = "m/s"
+    case(OBS_TYPE_POSITION)
+        scale(1:3) = 1d0/u_meter
+        unitStr = "m  m  m"
+    case(OBS_TYPE_POSITION_VELOCITY)
+        scale(1:3) = 1d0/u_meter
+        scale(4:6) = 1d0/u_meter/TIME_UNIT
+        unitStr = "m  m  m  m/s  m/s  m/s"
+    end select
+
+    call obsTypeDescription(this%obsType, typeName, formatStr)
+
+    open(newunit = unit, file = trim(fn1), status = 'replace', iostat = ios)
+    if (ios /= 0) then
+        print*, "warning @saveRes: cannot open ", trim(fn1)
+        return
+    endif
+
+    write(unit, "(A)") repeat("#", 78)
+    write(unit, "(A)") "# Atlas Orbitalis - OD residuals (observed - computed)"
+    write(unit, "(A,I0,A,A,A)") "# observation type : ", this%obsType, " (", trim(typeName), ")"
+    write(unit, "(A,I0)") "# components       : ", this%npe
+    write(unit, "(A,I0)") "# epochs           : ", this%nData
+    write(unit, "(A,A)") "# units            : ", trim(unitStr)
+    write(unit, "(A)") "# data format      : MJD_day  MJD_sec  res1 ... resN"
+    write(unit, "(A)") repeat("#", 78)
+
+    if (this%npe >= 1 .and. this%npe <= 10) then
+        write(fmt, "('(I6,2x,F13.6,',I0,'(2x,ES16.8))')") this%npe
+        nOut = min(this%nData, size(this%res, 1))
+        if (allocated(this%timeTable)) nOut = min(nOut, size(this%timeTable))
+        do i = 1, nOut
+            write(unit, fmt) nint(this%timeTable(i)%day), this%timeTable(i)%sec, &
+                &   (this%res(i, j)*scale(j), j = 1, this%npe)
+        enddo
+    endif
+    close(unit)
     endsubroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

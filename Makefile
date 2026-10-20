@@ -43,7 +43,7 @@ LEVEL5 = module_station.f90 module_satellite.f90 module_access.f90 \
          module_residual.f90 module_satelliteScenario.f90 \
          module_IODor.f90 module_ODor.f90
 
-LEVEL6 = module_Atlas.f90
+LEVEL6 = module_Atlas.f90 module_ODdemo.f90
 
 FOR_FILES = PLEPH.for nrlmsise00_driver.for nrlmsise00_sub.for
 
