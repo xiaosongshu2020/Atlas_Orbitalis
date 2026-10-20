@@ -1867,7 +1867,7 @@ call myStation%generateTrajectory(ts)
 
 ## 10.1 概述
 
-可见性分析是卫星任务规划和观测仿真的核心环节。Atlas 的 `module_access` 提供卫星与地面站之间的可见性判断、观测数据生成和链路管理能力。多种观测类型（赤经赤纬、方位仰角、测距、多普勒、GNSS 等）可通过统一的接口配置。
+可见性分析是卫星任务规划和观测仿真的核心环节。Atlas 的 `module_access` 提供卫星与地面站之间的可见性判断、观测数据生成和链路管理能力。多种观测类型（赤经赤纬、方位仰角、测距、距离变率、位置/速度等）可通过统一的接口配置。
 
 **对应模块**：`module_access`（Level 5），`module_atmosphere`（Level 4，对流层折射）
 
@@ -1877,13 +1877,12 @@ Atlas 定义了以下观测类型（`module_access` 中的常量）：
 
 | 常量 | 值 | 类型 | 观测量 | 维数 | 典型用途 |
 |------|-----|------|--------|------|----------|
-| `ALPHA_DELTA` | 11 | 赤经/赤纬 | (α, δ) | 2 | 光学天体测量、空间监视 |
-| `RADAR` | 12 | 雷达 | (ρ, α, δ) 或 (ρ, A, E) | 3 | 雷达跟踪 |
+| `RA_DEC` | 11 | 赤经/赤纬 | (α, δ) | 2 | 光学天体测量、空间监视 |
+| `AZIMUTH_ELEVATION` | 12 | 方位/仰角 | (A, E) | 2 | 地基光学/雷达 |
 | `RANGING` | 13 | 测距 | (ρ) | 1 | 卫星激光测距 (SLR) |
-| `GNSS` | 14 | 导航 | (x,y,z,vx,vy,vz) | 6 | GPS/北斗精密定轨 |
+| `RANGERATE` | 14 | 距离变率 | (ρ̇) | 1 | 多普勒测速 |
 | `POSITION` | 15 | 位置 | (x, y, z) | 3 | 全位置观测 |
-| `AZIMUTH_ELEVATION` | 16 | 方位/仰角 | (A, E) | 2 | 地基光学/雷达 |
-| `RANGE_DOPPLER` | 17 | 距离+多普勒 | (ρ, ρ̇) | 2 | DORIS 等跟踪系统 |
+| `POSITION_VELOCITY` | 16 | 位置+速度 | (x,y,z,vx,vy,vz) | 6 | GPS/北斗精密定轨 |
 
 ## 10.3 观测几何
 
@@ -1976,9 +1975,9 @@ endtype
 
 ## 10.8 使用建议
 
-1. **观测类型选择**：光学观测 → `AZIMUTH_ELEVATION`；雷达 → `RADAR`；SLR → `RANGING`；GNSS 精密定轨 → `GNSS`
+1. **观测类型选择**：光学观测 → `AZIMUTH_ELEVATION` 或 `RA_DEC`；SLR/测距 → `RANGING`；多普勒 → `RANGERATE`；GNSS 精密定轨 → `POSITION_VELOCITY`
 2. **仰角约束**：设置合理的 `E_min`（通常 5°–10°），过低的仰角导致过大的对流层折射误差
-3. **观测权重**：不同观测类型有不同的测量精度，典型 σ 值：角度 1–5 角秒，测距 1–10 m，GNSS 伪距 0.5–2 m
+3. **观测权重**：不同观测类型有不同的测量精度，典型 σ 值：角度 1–5 角秒，测距 1–10 m，位置 0.5–2 m
 4. **光行时**：当前测距计算为瞬时几何距离，高精度应用（< 1 cm）需考虑光行时修正
 5. **对流层修正**：低仰角（< 10°）时折射修正显著，建议开启
 \newpage
@@ -2739,12 +2738,12 @@ Atlas 提供了 15 个独立的命令行应用程序（`app/` 目录），每个
 
 **参考文档**：`release/readme_orbitPrediction.md` 有完整的参数说明和示例。
 
-### `app_observation` — 观测仿真
+### `app_observation` — 全类型观测仿真演示
 
-仿真地面站对卫星的观测数据（方位/仰角、赤经/赤纬、距离/距离率）。
+内置一个 LEO 卫星 + 北京地面站场景，一次生成全部六种观测数据（`RA_DEC`、`AZIMUTH_ELEVATION`、`RANGING`、`RANGERATE`、`POSITION`、`POSITION_VELOCITY`）。
 
-**输入**：卫星星历文件 + 地面站参数 + 时间设置（13 个参数）
-**输出**：可见弧段的观测数据文件
+**输入**：无命令行参数（场景参数写在源码中）
+**输出**：`data/output/demo_observation/` 下的六个观测文件 + 卫星星历
 
 **参考文档**：`release/readme_observation.md`
 
@@ -2752,7 +2751,7 @@ Atlas 提供了 15 个独立的命令行应用程序（`app/` 目录），每个
 
 从角度/测距数据使用 General Laplace 方法确定初轨。
 
-**观测类型**：AH（方位+仰角）、AD（赤经+赤纬）、RRD（距离+距离率）
+**观测类型**：AH（方位+仰角）、AD（赤经+赤纬）、RR（距离变率，General Laplace 不支持）
 
 **参考文档**：`release/readme_initialOrbitDetermination.md`
 
@@ -3121,13 +3120,12 @@ Atlas 的 SP3 支持用于 GNSS 精密定轨（`batch_GNSS`, `batch_position_bei
 
 | 常量 | 值 | 观测量 | 维数 |
 |------|-----|--------|------|
-| `ALPHA_DELTA` | 11 | (α, δ) | 2 |
-| `RADAR` | 12 | (ρ, α, δ) | 3 |
+| `RA_DEC` | 11 | (α, δ) | 2 |
+| `AZIMUTH_ELEVATION` | 12 | (A, E) | 2 |
 | `RANGING` | 13 | (ρ) | 1 |
-| `GNSS` | 14 | (x,y,z,vx,vy,vz) | 6 |
+| `RANGERATE` | 14 | (ρ̇) | 1 |
 | `POSITION` | 15 | (x, y, z) | 3 |
-| `AZIMUTH_ELEVATION` | 16 | (A, E) | 2 |
-| `RANGE_DOPPLER` | 17 | (ρ, ρ̇) | 2 |
+| `POSITION_VELOCITY` | 16 | (x,y,z,vx,vy,vz) | 6 |
 
 ---
 

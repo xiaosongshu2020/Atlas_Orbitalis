@@ -1,97 +1,74 @@
-# Satellite Observation Program
+# Observation Demo Program
 
 A program based on Atlas, developed by Shawn Hu (<lxiahu@hotmail.com>) in Nanjing University.
 
 ## Overview
 
-The Satellite Observation Program is a Fortran-based tool designed for simulating satellite observation scenarios. It calculates visibility and observation data based on a ground station's position and various observation parameters.
+`app_observation` is a self-contained observation simulation demo. It builds
+one LEO satellite and one ground station, then generates **all six observation
+types** supported by `module_access` over a one-day arc:
 
-## Features
+| Constant | Value | Observable | Components |
+|---|---:|---|---:|
+| `OBS_TYPE_RA_DEC` | 11 | Right ascension, declination | 2 |
+| `OBS_TYPE_AZIMUTH_ELEVATION` | 12 | Azimuth, elevation | 2 |
+| `OBS_TYPE_RANGING` | 13 | Range | 1 |
+| `OBS_TYPE_RANGERATE` | 14 | Range-rate | 1 |
+| `OBS_TYPE_POSITION` | 15 | x, y, z | 3 |
+| `OBS_TYPE_POSITION_VELOCITY` | 16 | Position and velocity | 6 |
 
-- Time-based simulation with configurable start time, end time, and step size
-- Customizable observer location (longitude, latitude, altitude)
-- Support for different observation types
-- Constraints for minimum elevation angle
-- Solar and lunar avoidance angles for observation planning
-- Ephemeris file reading for satellite position data
-- Data output to user-specified files
+All scenario settings are hard-coded in `app/app_observation.f90` (time span,
+satellite orbit, station coordinates, minimum elevation), following the
+batch-program convention. Modify the source and recompile to change them.
 
+## Build and Run
 
-## Usage
+From the repository root:
 
-Run the program with the following command:
-
-```
-./satellite_observation ts step te longitude latitude altitude obsType minEle solarDistance lunarDistance fnEph [fnData]
-```
-
-### Parameters
-
-| Parameter | Description | Units |
-|-----------|-------------|-------|
-| ts | Initial time | Modified Julian Date (MJD) |
-| step | Time step | Seconds |
-| te | End time | Modified Julian Date (MJD) |
-| longitude | Observer longitude | Degrees |
-| latitude | Observer latitude | Degrees |
-| altitude | Observer altitude | Meters |
-| obsType | Observation type | Integer code |
-| minEle | Minimum elevation angle | Degrees |
-| solarDistance | Minimum angular distance from Sun | Degrees |
-| lunarDistance | Minimum angular distance from Moon | Degrees |
-| fnEph | Satellite ephemeris filename | String |
-| fnData | Observation data output filename (optional) | String |
-
-### Example
-
-```
-./satellite_observation 59000.0 60.0 59001.0 139.0 35.0 100.0 1 10.0 30.0 15.0 satellite.eph results.dat
+```bash
+make
+./bin/app_observation.exe
 ```
 
-This command runs a 1-day simulation (MJD 59000.0 to 59001.0) with a 60-second step size for an observer in Tokyo (139°E, 35°N) at 100m altitude, using observation type 1, minimum elevation of 10°, minimum solar distance of 30°, and minimum lunar distance of 15°.
+Run from the repository root: all runtime paths are relative, so the
+ephemeris and gravity-field files are not found from `bin/`.
 
-## Observation Types
+## Scenario
 
-The program supports different observation types through the `obsType` parameter:
+- Epoch: 2025-01-01 00:00:00 UTC, one-day arc
+- Step: 30 s
+- Satellite: ~600 km altitude, 60 deg inclination, near-circular LEO
+- Force model: Earth gravity 8x8, drag, Sun and Moon third-body
+- Station: Beijing (116.4 deg E, 39.9 deg N, 50 m)
+- Minimum elevation: 10 deg
+- Constraint: optical types (`RA_DEC`, `AZIMUTH_ELEVATION`) skip epochs in the
+  Earth shadow; radio types do not
 
-| obsType | Description |
-|---------|-------------|
-| 11 | isAlphaDelta - Angles |
-| 12 | isRadar - A, h, range and velocity |
-| 13 | isRanging - range |
-| 14 | isGNSS - position and velocity |
-| 15 | isPosition - position |
-| 16 | isAh - A, h |
-| 17 | isRRD - range and velocity |
-| 19 | isOther - Other observation types |
+`POSITION` and `POSITION_VELOCITY` are state observations and are therefore
+not filtered by elevation or shadow (the existing `calObsData1` convention),
+so they contain one record per simulation epoch.
 
-## File Formats
+## Output
 
-### Ephemeris File Format
+Everything is written to `data/output/demo_observation/`:
 
-The ephemeris file should contain the satellite's position and velocity data in Cartesian coordinates, with each line formatted as:
+| File | Contents |
+|---|---|
+| `obs_RA_DEC.txt` | MJD day, seconds, RA/deg, Dec/deg |
+| `obs_AZIMUTH_ELEVATION.txt` | MJD day, seconds, Az/deg, El/deg |
+| `obs_RANGING.txt` | MJD day, seconds, range/km |
+| `obs_RANGERATE.txt` | MJD day, seconds, range-rate/(km/s) |
+| `obs_POSITION.txt` | MJD day, seconds, x,y,z/km |
+| `obs_POSITION_VELOCITY.txt` | MJD day, seconds, x,y,z/km, vx,vy,vz/(km/s) |
+| `eph_LEO-600km.txt` | Satellite ephemeris used for the simulation |
 
-```
-MJD(day) MJD(sec in day) X Y Z VX VY VZ
-```
+Each observation file starts with a self-describing `#` header (generator,
+access, transmitter, receiver, data type and its integer code, epoch count,
+time span, column layout). Data lines are whitespace-separated and use SI
+units at the file boundary (km, km/s, degrees); internally `type_access`
+stores normalized units.
 
-Where:
-- MJD(day) is the integer part of Modified Julian Date
-- MJD(sec in day) is the seconds part of the day
-- X, Y, Z are position coordinates in kilometers
-- VX, VY, VZ are velocity components in kilometers per second
-
-## Error Handling
-
-The program will display error messages and exit in the following cases:
-- Insufficient command-line arguments
-- Invalid parameter formats
-- Non-existent ephemeris file
-
-## Notes
-
-- All angles are in degrees
-- Times are in Modified Julian Date (MJD)
-- Distances are in kilometers or meters as specified
-
-
+`readAccessData` reads these files back, adopting the header's observation
+type and device names. The header type name is checked against the integer,
+so files written with the pre-redesign type codes are reported and ignored
+instead of being silently reinterpreted.

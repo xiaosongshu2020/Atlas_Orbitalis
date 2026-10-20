@@ -177,20 +177,20 @@ PROGRAM demo_satelliteScenario
                    solarDistance=10.0d0, &   ! Minimum angular distance from Sun
                    lunarDistance=10.0d0)     ! Minimum angular distance from Moon
   
-  ! Access 2: Satellite 1 to Station 2 (Range and Range-Rate observations)
-  call access2%init(number=2, name="LEO-Tokyo-RRD", &
+  ! Access 2: Satellite 1 to Station 2 (Range-rate observations)
+  call access2%init(number=2, name="LEO-Tokyo-RR", &
                    fromType=OBJECT_TYPE_SATELLITE, fromNum=1, &
                    toType=OBJECT_TYPE_STATION, toNum=2, &
-                   obsType=OBS_TYPE_RANGE_DOPPLER, &
+                   obsType=OBS_TYPE_RANGERATE, &
                    minEle=10.0d0, &          ! Minimum elevation angle
                    solarDistance=10.0d0, &   ! Minimum angular distance from Sun
                    lunarDistance=10.0d0)     ! Minimum angular distance from Moon
-  
-  ! Access 3: Satellite 2 to Station 1 (GNSS position/velocity observations)
-  call access3%init(number=3, name="GPS-Beijing-GNSS", &
+
+  ! Access 3: Satellite 2 to Station 1 (position/velocity observations)
+  call access3%init(number=3, name="GPS-Beijing-PV", &
                    fromType=OBJECT_TYPE_SATELLITE, fromNum=2, &
                    toType=OBJECT_TYPE_STATION, toNum=1, &
-                   obsType=OBS_TYPE_GNSS, &
+                   obsType=OBS_TYPE_POSITION_VELOCITY, &
                    minEle=5.0d0)             ! Minimum elevation angle
   
   ! Add access links to the scenario
@@ -200,8 +200,8 @@ PROGRAM demo_satelliteScenario
   
   print *, "Access links created:"
   print *, "  1. ", trim(access1%name), " (Azimuth/Elevation)"
-  print *, "  2. ", trim(access2%name), " (Range/Range-Rate)"
-  print *, "  3. ", trim(access3%name), " (GNSS position/velocity)"
+  print *, "  2. ", trim(access2%name), " (Range-rate)"
+  print *, "  3. ", trim(access3%name), " (Position/velocity)"
   print *, ""
   
   ! -------------------------------------------------------------------------
@@ -255,8 +255,8 @@ PROGRAM demo_satelliteScenario
   
   ! Set output file paths
   output_file1 = "data/output/obs_LEO_Beijing_Ah.txt"
-  output_file2 = "data/output/obs_LEO_Tokyo_RRD.txt"
-  output_file3 = "data/output/obs_GPS_Beijing_GNSS.txt"
+  output_file2 = "data/output/obs_LEO_Tokyo_RR.txt"
+  output_file3 = "data/output/obs_GPS_Beijing_PV.txt"
   
   print *, "Saving observation data to files:"
   

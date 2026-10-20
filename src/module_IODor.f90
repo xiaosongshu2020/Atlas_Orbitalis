@@ -101,7 +101,7 @@
         ! 处理不同类型的观测数据
         select case(this%access%obsType)
         
-        case(OBS_TYPE_ALPHA_DELTA)
+        case(OBS_TYPE_RA_DEC)
             ! 直接从access中获取赤经赤纬数据
             nValid = 0
             do i = 1, nD
@@ -155,8 +155,8 @@
                 nValid = nValid + 1
             enddo
             
-        case(OBS_TYPE_RANGE_DOPPLER)
-            print*, "Error @solve_IODor: Range and Range-Rate data not yet implemented"
+        case(OBS_TYPE_RANGERATE)
+            print*, "Error @solve_IODor: Range-rate data not supported by General Laplace"
             deallocate(t, alpha, delta, X, Y, Z)
             return
             
@@ -284,20 +284,18 @@
         
         ! 观测类型
         select case(this%access%obsType)
-        case(OBS_TYPE_ALPHA_DELTA)
-            obsTypeStr = "Alpha/Delta"
+        case(OBS_TYPE_RA_DEC)
+            obsTypeStr = "RA/Dec"
         case(OBS_TYPE_AZIMUTH_ELEVATION)
             obsTypeStr = "Azimuth/Elevation"
-        case(OBS_TYPE_RADAR)
-            obsTypeStr = "Radar"
-        case(OBS_TYPE_RANGE_DOPPLER)
-            obsTypeStr = "Range/Range-Rate"
         case(OBS_TYPE_RANGING)
             obsTypeStr = "Range Only"
-        case(OBS_TYPE_GNSS)
-            obsTypeStr = "GNSS"
+        case(OBS_TYPE_RANGERATE)
+            obsTypeStr = "Range Rate"
         case(OBS_TYPE_POSITION)
             obsTypeStr = "Position Only"
+        case(OBS_TYPE_POSITION_VELOCITY)
+            obsTypeStr = "Position/Velocity"
         case default
             obsTypeStr = "Unknown"
         end select
@@ -452,20 +450,18 @@
         
         ! 观测类型
         select case(this%access%obsType)
-        case(OBS_TYPE_ALPHA_DELTA)
-            obsTypeStr = "Alpha/Delta"
+        case(OBS_TYPE_RA_DEC)
+            obsTypeStr = "RA/Dec"
         case(OBS_TYPE_AZIMUTH_ELEVATION)
             obsTypeStr = "Azimuth/Elevation"
-        case(OBS_TYPE_RADAR)
-            obsTypeStr = "Radar"
-        case(OBS_TYPE_RANGE_DOPPLER)
-            obsTypeStr = "Range/Range-Rate"
         case(OBS_TYPE_RANGING)
             obsTypeStr = "Range Only"
-        case(OBS_TYPE_GNSS)
-            obsTypeStr = "GNSS"
+        case(OBS_TYPE_RANGERATE)
+            obsTypeStr = "Range Rate"
         case(OBS_TYPE_POSITION)
             obsTypeStr = "Position Only"
+        case(OBS_TYPE_POSITION_VELOCITY)
+            obsTypeStr = "Position/Velocity"
         case default
             obsTypeStr = "Unknown"
         end select

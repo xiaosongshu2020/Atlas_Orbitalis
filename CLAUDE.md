@@ -162,14 +162,12 @@ call ac%show()
 
 | `OBS_TYPE_*` | Value | Observable | npe |
 |---|---|---|---|
-| `ALPHA_DELTA` | 11 | RA, Dec | 2 |
-| `RADAR` | 12 | Az, El, range, range-rate | 4 |
+| `RA_DEC` | 11 | RA, Dec | 2 |
+| `AZIMUTH_ELEVATION` | 12 | Az, El | 2 |
 | `RANGING` | 13 | Range | 1 |
-| `GNSS` | 14 | Position + velocity | 6 |
+| `RANGERATE` | 14 | Range-rate | 1 |
 | `POSITION` | 15 | x, y, z | 3 |
-| `AZIMUTH_ELEVATION` | 16 | Az, El | 2 |
-| `RANGE_DOPPLER` | 17 | Range, range-rate | 2 |
-| `OTHER` | 19 | — | — |
+| `POSITION_VELOCITY` | 16 | Position + velocity | 6 |
 
 `setNpe()` derives `npe` from `obsType`. Generation functions (called by the scenario): `calObsData1(ts, sat, station, access, force)`, `calObsData2(ts, sat1, sat2, …)`, `calObsData3(ts, sat, …)`. Correction flags — mind the defaults, they are **not** all off: `key_light_time_delay` = `.true.`, `key_atmospherical_refraction` = `.false.`, `key_clock_error` = `.true.`. `AzimuthElevation2RaDec(station, access)` converts Az/El to RA/Dec.
 
@@ -183,7 +181,7 @@ For RANGING, `key_clock_error` makes the observation follow the receiver-timed m
 # data type   : RANGING (obsType = 13)      # data format : MJD_day  MJD_sec  Range/km
 ```
 
-`readData` skips `#`/`*`/`!`/`！` and blank lines and **adopts the header's `obsType`** (fixing `npe`; a conflict with the object is reported and the header wins), plus the device names. Reading is fault tolerant: `readDataMatrix` reports and **skips** malformed data lines (never zero-fills) and returns the count in its optional `nRead`, which `readAccessData` and `%readtrajectory` use to shrink their tables. Headerless legacy files still read (lines skipped one by one, `obsType` kept from the object).
+`readData` skips `#`/`*`/`!`/`！` and blank lines and **adopts the header's `obsType`** (fixing `npe`; a conflict with the object is reported and the header wins), plus the device names. The header's type name is checked against the integer: a stale name/int pair (pre-redesign `GNSS` = 14, `AZIMUTH_ELEVATION` = 16, `RADAR` = 12) is reported and ignored rather than silently reinterpreting the old columns. Reading is fault tolerant: `readDataMatrix` reports and **skips** malformed data lines (never zero-fills) and returns the count in its optional `nRead`, which `readAccessData` and `%readtrajectory` use to shrink their tables. Headerless legacy files still read (lines skipped one by one, `obsType` kept from the object).
 
 ### Scenario: `type_satelliteScenario` ([module_satelliteScenario.f90](src/module_satelliteScenario.f90), Level 5)
 
@@ -201,7 +199,7 @@ There is **no `generateObservations()`** (manual only) — the entry point is `o
 
 `type_ODor%showProgress` (default `.false.`) turns on an iteration progress display: the trajectory phase reuses `sat%opMod%showProgressBar` (temporarily enabled, restored at the end) and the observation sweep reports processed epochs through the global `Progress` bar, followed by a one-line per-iteration summary (epochs + residual RMS + elapsed). `CMD_ProgressBar%Put` gained an optional trailing-text argument for that. The per-link `RMS` lines still go to `data/output/log_batchOD.txt` unconditionally but are suppressed on screen **only** while the display is on, so other OD apps keep their old output. Both progress bars refresh every ~1 % (a per-epoch refresh is a 2.4 MB wall of text per navSat run — 6.6 k updates per iteration — for a 40-cell bar that shows nothing new; `generateTrajectoryNumberical` throttles with `nStep = nEpochs/100` and always redraws the last epoch). Cost split measured for a navSat iteration (~1.9 s): trajectory generation ~1.7 s — `generateTrajectoryNumberical` calls `NumOP` once per *output epoch* (2881 per satellite), so per-call overhead dominates, not the integration (a single 1-day MEO call is only 25 ms) — observation sweep ~0.15 s, STM series ~0.05 s. `numericalSTM_ECOM` is expensive (15 finite-difference propagations per call, and the batch solve used to call it once per *observation* — hours per iteration for a 1-day 30 s arc), so `type_ODor` carries `STMseries(:)`: one `type_STM` per group holding `dX(t_k)/dp` on a grid of `stmStepSec` (default 1800 s), rebuilt at the top of every iteration and read back by 4-point Lagrange interpolation in `calB` (measured interpolation error 7e-4 relative; the underlying finite difference itself is good to 0.3%). `calB` also now handles a group whose satellite is the *receiver* of a link (sat-sat ranging) by swapping the two ends in `calDYDR` — it used to `stop` with "unfinished part".
 
-Residual RMS is printed in **display units**, not normalized ones: `resUnitCode(obsType, jc)` maps each observation *component* to 1 = arcsec, 2 = m, 3 = m/s, 4 = raw (normalized), and `resRMSstr(nAcc, str)` pools `res%acc(1:nAcc)` into one RMS per unit group, e.g. `RMS = 6.99E+00 m, 6.40E-03 m/s` for GNSS (position and velocity are never added into a single number — that sum has no physical meaning) or `RMS = 6.96E-02 arcsec` for Az-El. The convergence test still uses the normalized `res%RMS` from `calRMS`, untouched. Note the log's per-access line is *cumulative* over the accesses processed so far (pre-existing behaviour); the last one is the overall RMS shown in the iteration summary.
+Residual RMS is printed in **display units**, not normalized ones: `resUnitCode(obsType, jc)` maps each observation *component* to 1 = arcsec, 2 = m, 3 = m/s, 4 = raw (normalized), and `resRMSstr(nAcc, str)` pools `res%acc(1:nAcc)` into one RMS per unit group, e.g. `RMS = 6.99E+00 m, 6.40E-03 m/s` for POSITION_VELOCITY (position and velocity are never added into a single number — that sum has no physical meaning) or `RMS = 6.96E-02 arcsec` for Az-El. The convergence test still uses the normalized `res%RMS` from `calRMS`, untouched. Note the log's per-access line is *cumulative* over the accesses processed so far (pre-existing behaviour); the last one is the overall RMS shown in the iteration summary.
 
 `type_IODor` ([module_IODor.f90](src/module_IODor.f90)) — General Laplace: `init(maxDataLength)`, `solve(initialState)` (J2000 Cartesian, normalized), `show()`, `saveIODor(fn)`.
 
@@ -299,14 +297,14 @@ Common sets: Earth gravity only = `degree`/`order` alone (all switches 0); +luni
 
 ## Application programs
 
-16 programs in `app/`; only three are argument-driven CLIs (documented in `release/readme_*.md`) — the rest are demos/batch drivers with settings hard-coded in the source.
+16 programs in `app/`; only two are argument-driven CLIs (documented in `release/readme_*.md`) — the rest are demos/batch drivers with settings hard-coded in the source.
 
 | Program | Purpose |
 |---------|---------|
 | `app_orbitPrediction` | CLI: full force-model propagation (times, Keplerian elements, step, output, Cd/amrDrag/F107/Ap, order, then the 8 switches) |
-| `app_observation` | CLI: ground-station observation simulation |
+| `app_observation` | Demo: one LEO + Beijing station, generates all six observation types into `data/output/demo_observation/` |
 | `app_initialOrbitDetermination` | CLI: IOD from angle/range data |
-| `satelliteScenario` | Multi-sat/station scenario → `obs_LEO_Beijing_Ah.txt`, `obs_LEO_Tokyo_RRD.txt`, `obs_GPS_Beijing_GNSS.txt` |
+| `satelliteScenario` | Multi-sat/station scenario → `obs_LEO_Beijing_Ah.txt`, `obs_LEO_Tokyo_RR.txt`, `obs_GPS_Beijing_PV.txt` |
 | `observation_ranging` → `batchOD_ranging` | Paired ranging simulation (obsType 13) and batch POD from its output |
 | `batch_GNSS`, `batch_position_beidou`, `batch_AzimuthElevation`, `ekf_angleData` | Batch POD from GNSS PV / SP3 (BeiDou C06) / Az-El, EKF from RA-Dec |
 | `satellite`, `prediction_thruster` | `type_satellite` demos: trajectories, save/load, thruster ledger |
@@ -377,7 +375,7 @@ The classic scenario configuration files in `data/input/` (`object_*.txt`) are *
 
 **Manual / code drift**
 - `module_SP3Kit` (manual) is `module_sp3`; `module_perturbationAspherical` does not exist (Earth's field lives in `module_Gravity` + `module_orbitPredictionNumerical`).
-- Observation constants are `OBS_TYPE_*` (11–17, 19); `type_access%dataTable` is normalized; `RADAR` has npe = 4.
+- Observation constants are `OBS_TYPE_*` (11–16: RA_DEC, AZIMUTH_ELEVATION, RANGING, RANGERATE, POSITION, POSITION_VELOCITY); `type_access%dataTable` is normalized.
 - `type_satelliteScenario` has no `generateObservations`; `u_*` factors convert *into* normalized units (appendix A.3 is inverted); NSG2 is implemented, not "reserved".
 - The manual (`manual/atlas_manual.md`) still carries `data/data_op/` paths in ~18 places; the `files/` paths that `README.md` and `setting_orbitDetermination.txt` used to have are gone (both were fixed; the config file has since been deleted).
 

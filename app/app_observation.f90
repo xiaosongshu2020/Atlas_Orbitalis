@@ -1,225 +1,154 @@
-
-
 !**************************************************************************
-! Program Name: SatelliteObservation
-! Purpose: Satellite observation scenario simulation program
-! Function: Calculate satellite observation data based on given station position and parameters
+! Program Name: app_observation
+! Purpose: Observation data generation demo - all observation types
+! Function: Build one LEO satellite and one ground station scenario and
+!           generate every observation type supported by module_access:
+!             RA_DEC, AZIMUTH_ELEVATION, RANGING, RANGERATE,
+!             POSITION, POSITION_VELOCITY
+!           Each link is written to data/output/demo_observation/.
+!
+! All scenario settings are hard-coded below (modify and recompile to
+! change them), following the batch-program convention. Run the program
+! from the repository root so the relative data paths resolve.
 !**************************************************************************
-program SatelliteObservation
-use module_const      ! Constants module
-use module_time       ! Time processing module
+program app_observation
+use module_const              ! Constants module
+use module_time               ! Time processing module
 use module_timeSeries
 use module_satelliteScenario  ! Satellite scenario module
-use module_satellite  ! Satellites module
-use module_station    ! Station module
-use module_access     ! Visibility calculation module
+use module_satellite          ! Satellites module
+use module_station            ! Station module
+use module_access             ! Observation types and generation routines
 IMPLICIT NONE
 
+!---------------------- Scenario Setting Section (hard-coded) ----------------------
+! Time settings
+REAL(8), parameter :: step = 30d0              ! time step (seconds)
+! Satellite settings: ~600 km altitude, inclination 60 deg, near-circular LEO
+REAL(8), parameter :: altKm = 600d0            ! satellite altitude (km)
+REAL(8), parameter :: inclination = 60d0       ! inclination (degrees)
+REAL(8), parameter :: amrDrag = 0.02d0         ! drag area-to-mass ratio (m^2/kg)
+! Ground station settings: Beijing
+REAL(8), parameter :: longitude = 116.4d0      ! station longitude (degrees)
+REAL(8), parameter :: latitude = 39.9d0        ! station latitude (degrees)
+REAL(8), parameter :: altitude = 50d0          ! station altitude (meters)
+! Observation settings
+REAL(8), parameter :: minEle = 10d0            ! minimum elevation (degrees)
+CHARACTER(len=*), parameter :: outDir = "data/output/demo_observation/"
+CHARACTER(len=*), parameter :: satName = "LEO-600km"
+! The six supported observation types, in the order they are demonstrated
+INTEGER, parameter :: obsTypes(6) = (/ OBS_TYPE_RA_DEC, OBS_TYPE_AZIMUTH_ELEVATION, &
+    &   OBS_TYPE_RANGING, OBS_TYPE_RANGERATE, OBS_TYPE_POSITION, &
+    &   OBS_TYPE_POSITION_VELOCITY /)
+CHARACTER(len=32), parameter :: obsNames(6) = (/ character(len=32) :: &
+    &   "RA_DEC", "AZIMUTH_ELEVATION", "RANGING", "RANGERATE", &
+    &   "POSITION", "POSITION_VELOCITY" /)
+
 !---------------------- Variable Declaration Section ----------------------
-! Basic variables
-INTEGER :: i, stat, nArgs
-CHARACTER(len=256) :: arg
-
-! Time parameters
-REAL(8) :: ts, step, te  ! Start time(MJD), time step(seconds), end time(MJD)
-
-! Observer station parameters
-REAL(8) :: longitude, latitude, altitude  ! Longitude, latitude(degrees), altitude(meters)
-
-! Observation condition parameters
-INTEGER :: obsType                        ! Observation type
-REAL(8) :: minEle                         ! Minimum elevation angle(degrees)
-REAL(8) :: solarDistance                  ! Minimum angular distance from Sun(degrees)
-REAL(8) :: lunarDistance                  ! Minimum angular distance from Moon(degrees)
-
-! File parameters
-CHARACTER(len=256) :: fnEph, fnData       ! trajectory file, data output file
-LOGICAL :: hasDataFile                    ! Flag indicating if data file is provided
-
-! Time series and scenario parameters
-type(type_t) :: t0                        ! Initial time
-integer :: nStep                          ! Total steps
-type(type_timeSeries) :: timeS            ! Time series
-
+type(type_t) :: t0, te
 type(type_satelliteScenario) :: ss
+type(type_satellite) :: sat
+type(type_station) :: sta
+type(type_access) :: ac
+REAL(8) :: kpl(6)                         ! Keplerian elements (normalized units)
+type(type_t), allocatable :: epochs(:)    ! trajectory output epochs
+CHARACTER(len=160) :: fname
+INTEGER :: i, k
 
-!---------------------- Initialization Section ----------------------
-! Initialize optional parameter flags
-hasDataFile = .FALSE.
+!---------------------- Time Setup Section ----------------------
+call t0%init(2025d0, 1d0, 1d0, 0d0, 0d0, 0d0)   ! 2025-01-01 00:00:00 UTC
+te = timeAdd(t0, 1d0)                            ! 1 day arc
 
-! Get number of command line arguments
-nArgs = COMMAND_ARGUMENT_COUNT()
-
-!---------------------- Parameter Check Section ----------------------
-! Check if sufficient arguments are provided
-IF (nArgs < 11) THEN
-    WRITE(*,*) "Usage: ./program ts step te longitude latitude altitude obsType minEle solarDistance lunarDistance fnEph [fnData]"
-    WRITE(*,*) "Parameters:"
-    WRITE(*,*) "  ts - Initial time (MJD)"
-    WRITE(*,*) "  step - Time step (seconds)"
-    WRITE(*,*) "  te - End time (MJD)"
-    WRITE(*,*) "  longitude - Observer longitude (degrees)"
-    WRITE(*,*) "  latitude - Observer latitude (degrees)"
-    WRITE(*,*) "  altitude - Observer altitude (meters)"
-    WRITE(*,*) "  obsType - Observation type (integer)"
-    WRITE(*,*) "  minEle - Minimum elevation angle (degrees)"
-    WRITE(*,*) "  solarDistance - Minimum angular distance from Sun (degrees)"
-    WRITE(*,*) "  lunarDistance - Minimum angular distance from Moon (degrees)"
-    WRITE(*,*) "  fnEph - Satellite trajectory filename"
-    WRITE(*,*) "  fnData - Observation data output filename (optional)"
-    WRITE(*,*) "Example: ./observation 60808 30 60809 108 30 20 16 10 0 0 ./satEph.txt ./obsData.txt"
-    STOP
-END IF
-
-!---------------------- Parameter Reading Section ----------------------
-! Read start time
-CALL GET_COMMAND_ARGUMENT(1, arg)
-READ(arg, *, IOSTAT=stat) ts
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse initial time parameter"
-    STOP
-END IF
-
-! Read time step
-CALL GET_COMMAND_ARGUMENT(2, arg)
-READ(arg, *, IOSTAT=stat) step
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse time step parameter"
-    STOP
-END IF
-
-! Read end time
-CALL GET_COMMAND_ARGUMENT(3, arg)
-READ(arg, *, IOSTAT=stat) te
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse end time parameter"
-    STOP
-END IF
-
-! Read longitude
-CALL GET_COMMAND_ARGUMENT(4, arg)
-READ(arg, *, IOSTAT=stat) longitude
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse longitude parameter"
-    STOP
-END IF
-
-! Read latitude
-CALL GET_COMMAND_ARGUMENT(5, arg)
-READ(arg, *, IOSTAT=stat) latitude
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse latitude parameter"
-    STOP
-END IF
-
-! Read altitude
-CALL GET_COMMAND_ARGUMENT(6, arg)
-READ(arg, *, IOSTAT=stat) altitude
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse altitude parameter"
-    STOP
-END IF
-
-! Read observation type
-CALL GET_COMMAND_ARGUMENT(7, arg)
-READ(arg, *, IOSTAT=stat) obsType
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse observation type parameter"
-    STOP
-END IF
-
-! Read minimum elevation
-CALL GET_COMMAND_ARGUMENT(8, arg)
-READ(arg, *, IOSTAT=stat) minEle
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse minimum elevation parameter"
-    STOP
-END IF
-
-! Read solar distance
-CALL GET_COMMAND_ARGUMENT(9, arg)
-READ(arg, *, IOSTAT=stat) solarDistance
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse solar distance parameter"
-    STOP
-END IF
-
-! Read lunar distance
-CALL GET_COMMAND_ARGUMENT(10, arg)
-READ(arg, *, IOSTAT=stat) lunarDistance
-IF (stat /= 0) THEN
-    WRITE(*,*) "Error: Unable to parse lunar distance parameter"
-    STOP
-END IF
-
-! Read trajectory filename
-CALL GET_COMMAND_ARGUMENT(11, fnEph)
-
-! Read optional data output filename
-IF (nArgs >= 12) THEN
-    CALL GET_COMMAND_ARGUMENT(12, fnData)
-    hasDataFile = .TRUE.
-END IF
-
-!---------------------- Parameter Display Section ----------------------
-! Display only the most critical parameter information
-WRITE(*,*) "Time range: ", ts, "to", te, "MJD, Step:", step, "seconds"
-WRITE(*,*) "Observer location: Longitude=", longitude, "deg, Latitude=", latitude, "deg, Altitude=", altitude, "m"
-WRITE(*,*) "Observation conditions: Type=", obsType, ", Min. Elevation=", minEle, "deg"
-WRITE(*,*) "trajectory file:", TRIM(fnEph)
-IF (hasDataFile) THEN
-    WRITE(*,*) "Output file:", TRIM(fnData)
-END IF
-
-!---------------------- File Check Section ----------------------
-! Check if trajectory file exists
-INQUIRE(FILE=TRIM(fnEph), EXIST=hasDataFile)
-IF (.NOT. hasDataFile) THEN
-    WRITE(*,*) "Error: trajectory file does not exist -", TRIM(fnEph)
-    STOP
-END IF
-
-!---------------------- Calculation Preparation Section ----------------------
-WRITE(*,*) "Processing started..."
-
-! Initialize time
-call t0%init(ts)
-nStep = int((te - ts)*86400d0/step)  ! Calculate total steps
-call timeS%init(t0, step, nStep)     ! Initialize time series
+!---------------------- Output Directory ----------------------
+! saveAccessData opens the file directly and aborts if the directory is
+! missing, so create it first (same approach as app/halo_orbit.f90).
+call execute_command_line('mkdir "data/output/demo_observation"', wait=.true.)
 
 !---------------------- Scenario Establishment Section ----------------------
-! Set time series
-ss%ts = timeS
-ss%eleType = STATE_TYPE_CARTESIAN
-ss%nSat = 1
+WRITE(*,*) "Observation demo: all six observation types"
+WRITE(*,*) "  Satellite: altitude=", altKm, "km, inclination=", inclination, "deg"
+WRITE(*,*) "  Station:   longitude=", longitude, "deg, latitude=", latitude, "deg"
+WRITE(*,*) "  Step:      ", step, "s, arc: 1 day"
+WRITE(*,*) "  Output:    ", TRIM(outDir)
 
-! Initialize satellite
-allocate(ss%sat(1))
-call ss%sat(1)%init(t0, (/0d0, 0d0, 0d0, 0d0, 0d0, 0d0/), name='sat1', number=1)
-call ss%sat(1)%readtrajectory(STATE_TYPE_CARTESIAN, trim(fnEph))
+call ss%init(t0, te, step, STATE_TYPE_CARTESIAN, &
+    & "Observation demo with all six observation types")
 
-! Initialize observation station
-ss%nStation = 1
-allocate(ss%station(1))
-call ss%station(1)%init(number=1, name='station1', longitude=longitude, latitude=latitude, altitude=altitude)
-call ss%station(1)%generateTrajectory(timeS)
+! Initialize satellite (Keplerian elements in normalized units)
+kpl(1) = (LENGTH_UNIT + altKm) * u_km     ! semi-major axis
+kpl(2) = 0.001d0                          ! eccentricity
+kpl(3) = inclination * deg                ! inclination
+kpl(4) = 0d0                              ! RAAN
+kpl(5) = 0d0                              ! argument of perigee
+kpl(6) = 0d0                              ! mean anomaly
 
-! Initialize access relationship
-ss%nAccess = 1
-allocate(ss%access(1))
-call ss%access(1)%init(number=1, name='ac1', &
-&   fromType=102, fromNum=1, toType=101, toNum=1, &
-&   obsType=obsType, minEle = minEle, solarDistance = solarDistance, &
-&   lunarDistance = lunarDistance)
+call sat%init(t0, kpl, number=1, name=trim(satName), mass=500d0, &
+    &   eleType=STATE_TYPE_KEPLERIAN, propagator="numerical", &
+    &   degree=8, order=8, amrDrag=amrDrag)
+sat%opMod%key_moonGravity = 1   ! Moon third-body
+sat%opMod%key_sunGravity  = 1   ! Sun third-body
+sat%opMod%key_drag        = 1   ! atmospheric drag
+call ss%addSatellite(sat)
 
-!---------------------- Calculation Execution Section ----------------------
-! Calculate observation data
+! Initialize ground station
+call sta%init(number=1, name="Beijing", longitude=longitude, &
+    &   latitude=latitude, altitude=altitude)
+call ss%addStation(sta)
+
+! One access per observation type. initAccess does not reset the constraint
+! fields, so shadow is assigned explicitly on every pass: optical (RA_DEC,
+! AZIMUTH_ELEVATION) skips epochs in the Earth shadow, radio link types do not.
+do k = 1, 6
+    call ac%init(number=k, name=trim(obsNames(k)), &
+        &   fromType=OBJECT_TYPE_SATELLITE, fromNum=1, &
+        &   toType=OBJECT_TYPE_STATION, toNum=1, &
+        &   obsType=obsTypes(k), minEle=minEle)
+    select case(obsTypes(k))
+    case(OBS_TYPE_RA_DEC, OBS_TYPE_AZIMUTH_ELEVATION)
+        ac%shadow = .true.
+    case default
+        ac%shadow = .false.
+    end select
+    call ss%addAccess(ac)
+end do
+
+!---------------------- Trajectory Generation Section ----------------------
+allocate(epochs(ss%ts%n))
+do i = 1, ss%ts%n
+    epochs(i) = ss%ts%time(i)
+end do
+
+WRITE(*,*) "Generating satellite trajectory..."
+call ss%sat(1)%generateTrajectory(epochs)
+WRITE(*,*) "  Satellite trajectory points: ", ss%sat(1)%nEph
+
+WRITE(*,*) "Generating station trajectory..."
+call ss%station(1)%generateTrajectory(ss%ts)
+
+!---------------------- Observation Calculation Section ----------------------
+WRITE(*,*) "Calculating observations for all six types..."
 call ss%observation
+call ss%reportAccess
 
-! Save data to file
-call ss%access(1)%saveData(ss%ts, trim(fnData))
+!---------------------- Save Section ----------------------
+WRITE(*,*) "Saving observation data:"
+do k = 1, ss%nAccess
+    fname = TRIM(outDir)//"obs_"//TRIM(obsNames(k))//".txt"
+    call ss%access(k)%saveData(ss%ts, TRIM(fname))
+    WRITE(*, "(A,I0,A)") "  saved: "//TRIM(fname)//"   (epochs: ", &
+        &   ss%access(k)%nData, ")"
+end do
+
+! Save the satellite ephemeris used to generate the observations
+fname = TRIM(outDir)//"eph_"//TRIM(satName)//".txt"
+call ss%sat(1)%savetrajectory(STATE_TYPE_CARTESIAN, TRIM(fname))
+WRITE(*,*) "  saved: ", TRIM(fname)
+
+!---------------------- Cleanup Section ----------------------
+deallocate(epochs)
+call ss%freeSS
 
 !---------------------- Program End Section ----------------------
 WRITE(*,*) "Processing complete!"
 
-END PROGRAM SatelliteObservation
+END PROGRAM app_observation

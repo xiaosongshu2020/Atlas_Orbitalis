@@ -90,7 +90,7 @@
                          fromNum=1, &
                          toType=OBJECT_TYPE_STATION, &
                          toNum=1, &
-                         obsType=OBS_TYPE_ALPHA_DELTA, &
+                         obsType=OBS_TYPE_RA_DEC, &
                          minEle=10d0)
    access%errStd = 5d-6
    key_light_time_delay = .true.

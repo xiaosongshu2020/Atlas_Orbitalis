@@ -1,5 +1,8 @@
-1				
-1  14  102  0  1  0	
+LEGACY - not read by any current program. The obsType codes below are from the
+pre-2026 table and no longer match module_access (11 RA_DEC, 12 AZIMUTH_ELEVATION,
+13 RANGING, 14 RANGERATE, 15 POSITION, 16 POSITION_VELOCITY).
+1
+1  14  102  0  1  0
 2  17  102  102  2  1
 
 

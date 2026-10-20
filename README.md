@@ -88,13 +88,13 @@ On Windows/MinGW the binaries carry the `.exe` suffix, as above; on Linux they d
 
 ## Application Programs
 
-16 programs live in `app/`. Three are argument-driven command-line tools with dedicated references; the rest are demos and batch drivers whose settings are edited in the source.
+16 programs live in `app/`. Two are argument-driven command-line tools with dedicated references; the rest are demos and batch drivers whose settings are edited in the source.
 
 | Program | Purpose |
 |---------|---------|
 | `app_orbitPrediction` | Full force-model orbit propagation — [reference](release/readme_orbitPrediction.md) |
-| `app_observation` | Ground-station observation simulation — [reference](release/readme_observation.md) |
-| `app_initialOrbitDetermination` | IOD from angle or range data — [reference](release/readme_initialOrbitDetermination.md) |
+| `app_observation` | Demo generating all six observation types into `data/output/demo_observation/` — [reference](release/readme_observation.md) |
+| `app_initialOrbitDetermination` | IOD from angle data (AH/AD) — [reference](release/readme_initialOrbitDetermination.md) |
 | `batch_GNSS` | Batch POD from GNSS position/velocity data |
 | `batch_position_beidou` | Batch POD from BeiDou SP3 precise ephemeris |
 | `batch_AzimuthElevation` | Batch POD from azimuth/elevation data |

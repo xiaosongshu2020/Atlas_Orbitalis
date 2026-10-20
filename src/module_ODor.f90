@@ -508,9 +508,9 @@
     !   1 = 角度 -> arcsec      2 = 长度 -> m
     !   3 = 速度 -> m/s         4 = 无量纲/未知 -> 保持归一化
     !
-    ! 为什么按分量而不是按链路: 同一条链路的各分量可能不同量纲(GNSS = 位置 +
-    ! 速度, RADAR = 角度 + 距离 + 距离变化率), 把它们平方相加得到的那个"RMS"没有
-    ! 物理意义, 所以按单位分组, 每个单位组各给一个数。
+    ! 为什么按分量而不是按链路: 同一条链路的各分量可能不同量纲(POSITION_VELOCITY
+    ! = 位置 + 速度), 把它们平方相加得到的那个"RMS"没有物理意义, 所以按单位分组,
+    ! 每个单位组各给一个数。
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     integer function resUnitCode(obsType, jc)
     implicit none
@@ -518,25 +518,13 @@
     integer, intent(in) :: jc      ! 该观测量第几个分量 (1..npe)
 
     select case (obsType)
-    case (OBS_TYPE_ALPHA_DELTA, OBS_TYPE_AZIMUTH_ELEVATION)
+    case (OBS_TYPE_RA_DEC, OBS_TYPE_AZIMUTH_ELEVATION)
         resUnitCode = 1                        ! RA/Dec, Az/El (弧度)
     case (OBS_TYPE_RANGING, OBS_TYPE_POSITION)
         resUnitCode = 2                        ! Range, (x, y, z)
-    case (OBS_TYPE_RADAR)
-        if (jc <= 2) then
-            resUnitCode = 1                    ! Az, El
-        elseif (jc == 3) then
-            resUnitCode = 2                    ! Range
-        else
-            resUnitCode = 3                    ! Range rate
-        endif
-    case (OBS_TYPE_RANGE_DOPPLER)
-        if (jc == 1) then
-            resUnitCode = 2                    ! Range
-        else
-            resUnitCode = 3                    ! Range rate
-        endif
-    case (OBS_TYPE_GNSS)
+    case (OBS_TYPE_RANGERATE)
+        resUnitCode = 3                        ! Range rate
+    case (OBS_TYPE_POSITION_VELOCITY)
         if (jc <= 3) then
             resUnitCode = 2                    ! Position
         else
@@ -1103,7 +1091,7 @@
     logical :: isFrom, isTo
     !-------------------------------------------------------------------
 
-    ! 只有测距观测的模型里含钟差项；其它观测量(角度/Doppler/GNSS)给全 0 列，
+    ! 只有测距观测的模型里含钟差项；其它观测量(角度/距离变率/位置速度)给全 0 列，
     ! 会让法方程奇异，validateVarGroups 已提前拦掉这种情况。
     if (acO%obsType /= OBS_TYPE_RANGING) return
     if (.not. key_clock_error) return
@@ -2195,20 +2183,13 @@
     integer i
     !-------------------------------------------------------------------
     select case(obsType)
-    case(OBS_TYPE_ALPHA_DELTA)
+    case(OBS_TYPE_RA_DEC)
         call calDYDR_alphaDelta(PVs, PVo, DYDR(1:2, 1:6))
-    case(OBS_TYPE_RANGE_DOPPLER)
-        call calDYDR_RRD(PVs, PVo, DYDR(1:2, 1:6))
-    case(OBS_TYPE_RADAR)
-        call calDYDR_radar(PVs, PVo, DYDR(1:4, 1:6))
+    case(OBS_TYPE_RANGERATE)
+        call calDYDR_velocity(PVs, PVo, DYDR(1:1, 1:6))
     case(OBS_TYPE_RANGING)
         call calDYDR_ranging(PVs, PVo, DYDR(1:1, 1:6))
-    case(OBS_TYPE_GNSS)
-        DYDR = 0d0
-        do i = 1, m
-            DYDR(i, i) = 1d0
-        enddo
-    case(OBS_TYPE_POSITION)
+    case(OBS_TYPE_POSITION, OBS_TYPE_POSITION_VELOCITY)
         DYDR = 0d0
         do i = 1, m
             DYDR(i, i) = 1d0
@@ -2235,28 +2216,6 @@
     sinDelta = dr(3)/rho
     M(1, 1:6) = (/-sinAlpha, cosAlpha, 0d0, 0d0, 0d0, 0d0/) / rho / cosDelta
     M(2, 1:6) = (/-sinDelta*cosAlpha, -sinDelta*sinAlpha, cosDelta, 0d0, 0d0, 0d0/) / rho
-    endsubroutine
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine calDYDR_radar(rs, ro, DYDR)
-    implicit none
-    double precision, intent(in) :: rs(6), ro(6)
-    double precision, intent(out) :: DYDR(4, 6)
-    !call calDYDR_Ah(rs, ro, DYDR(1:2, 1:6))
-    !call calDYDR_ranging(rs, ro, DYDR(3, 1:6))
-    !call calDYDR_velocity(rs, ro, DYDR(4, 1:6))
-    DYDR = 0d0
-    print*, "unfinished part. @calDYDR_radar."
-    stop
-    endsubroutine
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine calDYDR_RRD(rs, ro, DYDR)
-    implicit none
-    double precision, intent(in) :: rs(6), ro(6)
-    double precision, intent(out) :: DYDR(2, 6)
-    call calDYDR_ranging(rs, ro, DYDR(1, 1:6))
-    call calDYDR_velocity(rs, ro, DYDR(2, 1:6))
     endsubroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

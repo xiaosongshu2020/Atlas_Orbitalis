@@ -83,15 +83,15 @@
         obsType = OBS_TYPE_AZIMUTH_ELEVATION
         print*, "Observation type: Azimuth/Elevation"
     case('AD')
-        obsType = OBS_TYPE_ALPHA_DELTA
+        obsType = OBS_TYPE_RA_DEC
         print*, "Observation type: Right Ascension/Declination"
-    case('RRD')
-        obsType = OBS_TYPE_RANGE_DOPPLER
-        print*, "Observation type: Range/Range-Rate"
-        print*, "Warning: RRD type is not yet fully implemented in IODor module"
+    case('RR')
+        obsType = OBS_TYPE_RANGERATE
+        print*, "Observation type: Range Rate"
+        print*, "Warning: range-rate data is not supported by the General Laplace method"
     case default
         print*, "Error: Unknown observation type: ", trim(obs_type_str)
-        print*, "Supported types: AH, AD, RRD"
+        print*, "Supported types: AH, AD, RR"
         stop
     end select
     
@@ -127,14 +127,10 @@
         propagator="two-body")
     
     ! ��ʼ���۲����ݷ��ʶ���
-    access%number = 1
-    access%name = "IOD Observations"
-    access%fromType = OBJECT_TYPE_STATION
-    access%fromNum = station%number
-    access%toType = OBJECT_TYPE_SATELLITE
-    access%toNum = satellite%number
-    access%obsType = obsType
-    access%minEle = 5d0  ! ��С����5��
+    call access%init(number=1, name="IOD Observations", &
+        &   fromType=OBJECT_TYPE_STATION, fromNum=station%number, &
+        &   toType=OBJECT_TYPE_SATELLITE, toNum=satellite%number, &
+        &   obsType=obsType, minEle=5d0)   ! minimum elevation 5 deg
     
     ! ��ȡ�۲�����
     !print*, "Reading observation data..."
@@ -182,10 +178,10 @@ contains
         print*, "  longitude  : Station longitude in degrees (-180 to 180)"
         print*, "  latitude   : Station latitude in degrees (-90 to 90)"
         print*, "  altitude   : Station altitude in meters"
-        print*, "  obs_type   : Observation type (AH, AD, or RRD)"
-        print*, "               AH  - Azimuth/Elevation"
-        print*, "               AD  - Right Ascension/Declination"
-        print*, "               RRD - Range/Range-Rate"
+        print*, "  obs_type   : Observation type (AH, AD, or RR)"
+        print*, "               AH - Azimuth/Elevation"
+        print*, "               AD - Right Ascension/Declination"
+        print*, "               RR - Range rate (not supported by General Laplace)"
         print*, "  data_file  : Path to observation data file"
         print*, ""
         print*, "Example:"

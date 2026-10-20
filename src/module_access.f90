@@ -12,7 +12,7 @@
     !                              shadow, EarthBlockage, MoonBlockage
     !   transmitter constraints  : pointTo, t_coverage, beamHalfAngle
     ! The `force` argument of the generation routines bypasses all
-    ! visibility constraints; GNSS/POSITION data are always exempt.
+    ! visibility constraints; POSITION_VELOCITY/POSITION data are always exempt.
     !
     ! Observation generation routines:
     !   calObsData1 : satellite <-> ground station
@@ -38,14 +38,12 @@
     ! OBSERVATION DATA TYPES
     !===========================================================================
     
-    integer, parameter :: OBS_TYPE_ALPHA_DELTA   = 11  ! Angular measurements (right ascension, declination)
-    integer, parameter :: OBS_TYPE_RADAR         = 12  ! Azimuth, elevation, range and velocity
-    integer, parameter :: OBS_TYPE_RANGING       = 13  ! Range-only measurements
-    integer, parameter :: OBS_TYPE_GNSS          = 14  ! GNSS-based position and velocity
-    integer, parameter :: OBS_TYPE_POSITION      = 15  ! Position-only measurements
-    integer, parameter :: OBS_TYPE_AZIMUTH_ELEVATION = 16  ! Azimuth and elevation
-    integer, parameter :: OBS_TYPE_RANGE_DOPPLER = 17  ! Range, range-rate
-    integer, parameter :: OBS_TYPE_OTHER         = 19  ! Other specialized observation types
+    integer, parameter :: OBS_TYPE_RA_DEC            = 11  ! Right ascension and declination
+    integer, parameter :: OBS_TYPE_AZIMUTH_ELEVATION = 12  ! Azimuth and elevation
+    integer, parameter :: OBS_TYPE_RANGING           = 13  ! Range-only measurements
+    integer, parameter :: OBS_TYPE_RANGERATE         = 14  ! Range-rate-only measurements
+    integer, parameter :: OBS_TYPE_POSITION          = 15  ! Position-only measurements
+    integer, parameter :: OBS_TYPE_POSITION_VELOCITY = 16  ! Position and velocity
 
     type :: type_access
         
@@ -58,7 +56,7 @@
         integer :: toType = 0      ! target object type: OBJECT_TYPE_SATELLITE or OBJECT_TYPE_STATION
         integer :: toNum = 0       ! target object number
         character*100 :: toName = ''   ! target object name (the receiver of the link)
-        integer :: obsType = 0     ! observation type: OBS_TYPE_* constant (11-19); determines npe
+        integer :: obsType = 0     ! observation type: OBS_TYPE_* constant (11-16); determines npe
         integer :: nData = 0       ! number of observation epochs actually generated
         integer :: npe = 2         ! data dimension per epoch; auto-set by setNpe() from obsType
         
@@ -263,7 +261,7 @@
     ! skip the header without knowing how many lines it has
     call writeAccessHeader(511, ac)
     select case(ac%obsType)
-    case(OBS_TYPE_ALPHA_DELTA)
+    case(OBS_TYPE_RA_DEC)
         write(511, "(A,2x,A5,2x,A13,2x,A10,2x,A10)") "#", "Day", "Sec", "RA/deg", "DEC/deg"
         write(511, "(A,2x,5('-'),2x,13('-'),2x,10('-'),2x,10('-'))") "#"
         do i = 1, ac%nData
@@ -272,28 +270,13 @@
             epoch = ac%timeTable(i)
             write(511, "(2x,I5,2x,F13.6,2x,F10.5,2x,F10.5)") nint(epoch%day), epoch%sec, alpha, delta
         enddo
-    case(OBS_TYPE_RANGE_DOPPLER)
-        write(511, "(A,2x,A5,2x,A13,2x,A18,2x,A18)") "#", "Day", "Sec", "R/km", "Rd/(km/s)"
-        write(511, "(A,2x,5('-'),2x,13('-'),2x,18('-'),2x,18('-'))") "#"
+    case(OBS_TYPE_RANGERATE)
+        write(511, "(A,2x,A5,2x,A13,2x,A18)") "#", "Day", "Sec", "Rd/(km/s)"
+        write(511, "(A,2x,5('-'),2x,13('-'),2x,18('-'))") "#"
         do i = 1, ac%nData
-            rho = ac%dataTable(i, 1)*length_unit
-            rhoDot = ac%dataTable(i, 2)*length_unit/time_unit
+            rhoDot = ac%dataTable(i, 1)*length_unit/time_unit
             epoch = ac%timeTable(i)
-            write(511, "(2x,I5,2x,F13.6,2x,F18.3,2x,F18.6)") &
-                &   nint(epoch%day), epoch%sec, rho, rhoDot
-        enddo
-    case(OBS_TYPE_RADAR)
-        write(511, "(A,2x,A5,2x,A13,2x,A10,2x,A10,2x,A18,2x,A18)") &
-            &   "#", "Day", "Sec", "Azi/deg", "Ele/deg", "R/km", "Rd/(km/s)"
-        write(511, "(A,2x,5('-'),2x,13('-'),2x,10('-'),2x,10('-'),2x,18('-'),2x,18('-'))") "#"
-        do i = 1, ac%nData
-            azimuth = ac%dataTable(i, 1)*rad2deg
-            elevation = ac%dataTable(i, 2)*rad2deg
-            rho = ac%dataTable(i, 3)*length_unit
-            rhoDot = ac%dataTable(i, 4)*length_unit/time_unit
-            epoch = ac%timeTable(i)
-            write(511, "(2x,I5,2x,F13.6,2x,F10.5,2x,F10.5,2x,F18.3,2x,F18.6)") &
-                &   nint(epoch%day), epoch%sec, azimuth, elevation, rho, rhoDot
+            write(511, "(2x,I5,2x,F13.6,2x,F18.6)") nint(epoch%day), epoch%sec, rhoDot
         enddo
     case(OBS_TYPE_RANGING)
         write(511, "(A,2x,A5,2x,A13,2x,A18)") "#", "Day", "Sec", "R/km"
@@ -303,7 +286,7 @@
             rho = ac%dataTable(i, 1)*length_unit
             write(511, "(2x,I5,2x,F13.6,2x,F18.6)") nint(epoch%day), epoch%sec, rho
         enddo
-    case(OBS_TYPE_GNSS)
+    case(OBS_TYPE_POSITION_VELOCITY)
         write(511, "(A,2x,A5,2x,A13,6(2x,A18))") "#", "Day", "Sec", &
             &   "X/km", "Y/km", "Z/km", "XDot/(km/s)", "YDot/(km/s)", "ZDot/(km/s)"
         write(511, "(A,2x,5('-'),2x,13('-'),6(2x,'------------------'))") "#"
@@ -353,7 +336,7 @@
     implicit none
     integer, intent(in) :: unitNum
     class(type_access), intent(in) :: ac
-    character(len=64) :: typeName, formatStr
+    character(len=128) :: typeName, formatStr
     character(len=160) :: fromDev, toDev
     character(len=200) :: line
     character(len=16) :: numStr
@@ -416,15 +399,22 @@
             if (eq > 0) then
                 call firstInteger(line(pos+eq:), iType, found)
                 if (found) then
-                    if (knownObsType(iType)) then
+                    if (.not. knownObsType(iType)) then
+                        print*, "warning @readAccessHeader: unsupported obsType in file header:", iType
+                    elseif (.not. headerTypeNameMatches(line, iType)) then
+                        ! The 2026 type redesign reused integers 12/14/16 with new
+                        ! meanings. A header whose name and integer disagree was
+                        ! written by the old table; trusting the integer would
+                        ! silently reinterpret its columns, so ignore it.
+                        print*, "warning @readAccessHeader: type name in file header does not"
+                        print*, "match obsType =", iType, "; header type ignored, access object kept"
+                    else
                         if (ac%obsType /= 0 .and. ac%obsType /= iType) then
                             print*, "warning @readAccessHeader: the file header declares obsType =", iType
                             print*, "access object holds obsType =", ac%obsType, ", the file wins"
                         endif
                         ac%obsType = iType
                         call setNpe(ac)
-                    else
-                        print*, "warning @readAccessHeader: unsupported obsType in file header:", iType
                     endif
                 endif
             endif
@@ -437,6 +427,32 @@
     close(unitNum)
     end subroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Whether the type name in a '#' header agrees with the new observation
+    ! type table, e.g. "RANGING" for obsType = 13. Headers without a type
+    ! name are accepted (nothing to check). This guards against old files
+    ! whose integer code now means something else: the redesign reused
+    ! 12/14/16 for AZIMUTH_ELEVATION/RANGERATE/POSITION_VELOCITY.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    logical function headerTypeNameMatches(line, iType)
+    implicit none
+    character(len=*), intent(in) :: line
+    integer, intent(in) :: iType
+    character(len=128) :: nameInFile, typeName, formatStr
+    integer :: pos, colon, paren
+    !------------------------------------------------------
+    headerTypeNameMatches = .true.       ! no type name: nothing to check
+    pos = index(line, "data type")
+    if (pos == 0) return
+    colon = index(line(pos:), ":")
+    if (colon == 0) return
+    paren = index(line(pos+colon:), "(")
+    if (paren == 0) return
+    nameInFile = adjustl(line(pos+colon : pos+colon+paren-2))
+    if (len_trim(nameInFile) == 0) return   ! empty name: nothing to check
+    call obsTypeDescription(iType, typeName, formatStr)
+    headerTypeNameMatches = (trim(nameInFile) == trim(typeName))
+    end function
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Name and column layout of an observation data type,
     ! e.g. "RANGING" and "MJD_day  MJD_sec  Range/km"
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -447,30 +463,24 @@
     character(len=*), intent(out) :: formatStr
     !------------------------------------------------------
     select case(obsType)
-    case(OBS_TYPE_ALPHA_DELTA)
-        typeName  = "ALPHA_DELTA"
+    case(OBS_TYPE_RA_DEC)
+        typeName  = "RA_DEC"
         formatStr = "MJD_day  MJD_sec  RA/deg  DEC/deg"
-    case(OBS_TYPE_RADAR)
-        typeName  = "RADAR"
-        formatStr = "MJD_day  MJD_sec  Az/deg  El/deg  Range/km  RangeRate/(km/s)"
-    case(OBS_TYPE_RANGING)
-        typeName  = "RANGING"
-        formatStr = "MJD_day  MJD_sec  Range/km"
-    case(OBS_TYPE_GNSS)
-        typeName  = "GNSS"
-        formatStr = "MJD_day  MJD_sec  X/km  Y/km  Z/km  Vx/(km/s)  Vy/(km/s)  Vz/(km/s)"
-    case(OBS_TYPE_POSITION)
-        typeName  = "POSITION"
-        formatStr = "MJD_day  MJD_sec  X/km  Y/km  Z/km"
     case(OBS_TYPE_AZIMUTH_ELEVATION)
         typeName  = "AZIMUTH_ELEVATION"
         formatStr = "MJD_day  MJD_sec  Az/deg  El/deg"
-    case(OBS_TYPE_RANGE_DOPPLER)
-        typeName  = "RANGE_DOPPLER"
-        formatStr = "MJD_day  MJD_sec  Range/km  RangeRate/(km/s)"
-    case(OBS_TYPE_OTHER)
-        typeName  = "OTHER"
-        formatStr = "observation type specific"
+    case(OBS_TYPE_RANGING)
+        typeName  = "RANGING"
+        formatStr = "MJD_day  MJD_sec  Range/km"
+    case(OBS_TYPE_RANGERATE)
+        typeName  = "RANGERATE"
+        formatStr = "MJD_day  MJD_sec  RangeRate/(km/s)"
+    case(OBS_TYPE_POSITION)
+        typeName  = "POSITION"
+        formatStr = "MJD_day  MJD_sec  X/km  Y/km  Z/km"
+    case(OBS_TYPE_POSITION_VELOCITY)
+        typeName  = "POSITION_VELOCITY"
+        formatStr = "MJD_day  MJD_sec  X/km  Y/km  Z/km  Vx/(km/s)  Vy/(km/s)  Vz/(km/s)"
     case default
         typeName  = "UNKNOWN"
         formatStr = "unknown"
@@ -485,9 +495,8 @@
     integer, intent(in) :: obsType
     !------------------------------------------------------
     select case(obsType)
-    case(OBS_TYPE_ALPHA_DELTA, OBS_TYPE_RADAR, OBS_TYPE_RANGING, &
-        & OBS_TYPE_GNSS, OBS_TYPE_POSITION, OBS_TYPE_AZIMUTH_ELEVATION, &
-        & OBS_TYPE_RANGE_DOPPLER)
+    case(OBS_TYPE_RA_DEC, OBS_TYPE_AZIMUTH_ELEVATION, OBS_TYPE_RANGING, &
+        & OBS_TYPE_RANGERATE, OBS_TYPE_POSITION, OBS_TYPE_POSITION_VELOCITY)
         knownObsType = .true.
     case default
         knownObsType = .false.
@@ -565,20 +574,18 @@
     implicit none
     class(type_access) :: this
     select case(this%obsType)
-    case(OBS_TYPE_ALPHA_DELTA)
+    case(OBS_TYPE_RA_DEC)
         this%npe = 2
-    case(OBS_TYPE_RANGE_DOPPLER)
-        this%npe = 2
-    case(OBS_TYPE_RADAR)
-        this%npe = 4
-    case(OBS_TYPE_RANGING)
-        this%npe = 1
-    case(OBS_TYPE_GNSS)
-        this%npe = 6
-    case(OBS_TYPE_POSITION)
-        this%npe = 3
     case(OBS_TYPE_AZIMUTH_ELEVATION)
         this%npe = 2
+    case(OBS_TYPE_RANGING)
+        this%npe = 1
+    case(OBS_TYPE_RANGERATE)
+        this%npe = 1
+    case(OBS_TYPE_POSITION)
+        this%npe = 3
+    case(OBS_TYPE_POSITION_VELOCITY)
+        this%npe = 6
     case default
         print*, "warning @suborutine setNpe."
         print*, "invalid obsType, obsType = ", this%obsType
@@ -597,24 +604,19 @@
         write(*, *) "nData = 0 !"
     endif
     select case(this%obsType)
+    case(OBS_TYPE_RA_DEC)
+        this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)*deg2rad
     case(OBS_TYPE_AZIMUTH_ELEVATION)
         this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)*deg2rad
-    case(OBS_TYPE_ALPHA_DELTA)
-        this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)*deg2rad
-    case(OBS_TYPE_RANGE_DOPPLER)
-        this%dataTable(1:nData, 1) = this%dataTable(1:nData, 1)/length_unit
-        this%dataTable(1:nData, 2) = this%dataTable(1:nData, 2)/length_unit*time_unit
-    case(OBS_TYPE_RADAR)
-        this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)*deg2rad
-        this%dataTable(1:nData, 3) = this%dataTable(1:nData, 3)/length_unit
-        this%dataTable(1:nData, 4) = this%dataTable(1:nData, 4)/length_unit*time_unit
-    case(OBS_TYPE_POSITION)
-        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)/length_unit
-    case(OBS_TYPE_GNSS)
-        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)/length_unit
-        this%dataTable(1:nData, 4:6) = this%dataTable(1:nData, 4:6)/length_unit*time_unit
     case(OBS_TYPE_RANGING)
         this%dataTable(1:nData, 1) = this%dataTable(1:nData, 1)/length_unit
+    case(OBS_TYPE_RANGERATE)
+        this%dataTable(1:nData, 1) = this%dataTable(1:nData, 1)/length_unit*time_unit
+    case(OBS_TYPE_POSITION)
+        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)/length_unit
+    case(OBS_TYPE_POSITION_VELOCITY)
+        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)/length_unit
+        this%dataTable(1:nData, 4:6) = this%dataTable(1:nData, 4:6)/length_unit*time_unit
     endSelect
     endsubroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -625,24 +627,19 @@
     integer nData
     nData = this%nData
     select case(this%obsType)
+    case(OBS_TYPE_RA_DEC)
+        this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)/deg2rad
     case(OBS_TYPE_AZIMUTH_ELEVATION)
         this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)/deg2rad
-    case(OBS_TYPE_ALPHA_DELTA)
-        this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)/deg2rad
-    case(OBS_TYPE_RANGE_DOPPLER)
-        this%dataTable(1:nData, 1) = this%dataTable(1:nData, 1)*length_unit
-        this%dataTable(1:nData, 2) = this%dataTable(1:nData, 2)*length_unit/time_unit
-    case(OBS_TYPE_RADAR)
-        this%dataTable(1:nData, 1:2) = this%dataTable(1:nData, 1:2)/deg2rad
-        this%dataTable(1:nData, 3) = this%dataTable(1:nData, 3)*length_unit
-        this%dataTable(1:nData, 4) = this%dataTable(1:nData, 4)*length_unit/time_unit
-    case(OBS_TYPE_POSITION)
-        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)*length_unit
-    case(OBS_TYPE_GNSS)
-        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)*length_unit
-        this%dataTable(1:nData, 4:6) = this%dataTable(1:nData, 4:6)*length_unit/time_unit
     case(OBS_TYPE_RANGING)
         this%dataTable(1:nData, 1) = this%dataTable(1:nData, 1)*length_unit
+    case(OBS_TYPE_RANGERATE)
+        this%dataTable(1:nData, 1) = this%dataTable(1:nData, 1)*length_unit/time_unit
+    case(OBS_TYPE_POSITION)
+        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)*length_unit
+    case(OBS_TYPE_POSITION_VELOCITY)
+        this%dataTable(1:nData, 1:3) = this%dataTable(1:nData, 1:3)*length_unit
+        this%dataTable(1:nData, 4:6) = this%dataTable(1:nData, 4:6)*length_unit/time_unit
     endSelect
     endsubroutine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -697,7 +694,7 @@
             call light_time_delay(pvt_J2000, pvr_J2000)
         endif
         
-        if (force .or. access%obsType == OBS_TYPE_GNSS .or. access%obsType == OBS_TYPE_POSITION) then
+        if (force .or. access%obsType == OBS_TYPE_POSITION_VELOCITY .or. access%obsType == OBS_TYPE_POSITION) then
             if (access%obsType == OBS_TYPE_AZIMUTH_ELEVATION) then 
                 call ECI2ECF_IAU1980_positionVelocity(utc, pvt_J2000(1:3), &
                     &   pvt_J2000(4:6), pvt_fixed(1:3), pvt_fixed(4:6)) ! ���ǣ��ع�����
@@ -782,22 +779,18 @@
         timeTable(nData) = t
         select case(access%obsType)
         
-        case(OBS_TYPE_ALPHA_DELTA)
+        case(OBS_TYPE_RA_DEC)
             dr = pvt_J2000(1:3) - pvr_J2000(1:3)
             delta = dasin(dr(3)/norm2(dr)) ! get delta from sin(delta), -pi/2 <= delta <= pi/2
             call get_angle(dr(2)/norm2(dr(1:2)), &
                 &   dr(1)/norm2(dr(1:2)), Alpha) ! get alpha from sinAlpha and cosAlpha, 0 <= Alpha < 2*pi
             dataTable(nData, 1:2) = (/alpha, delta/)
-        
-        case(OBS_TYPE_RANGE_DOPPLER)
+
+        case(OBS_TYPE_RANGERATE)
             rho = norm2(pvt_J2000(1:3) - pvr_J2000(1:3))
             rhoDot = dot_product(pvt_J2000(4:6) - pvr_J2000(4:6), pvt_J2000(1:3) - pvr_J2000(1:3))/rho
-            dataTable(nData, 1:2) = (/rho, rhoDot/)
-        case(OBS_TYPE_RADAR)
-            rho = norm2(pvt_J2000(1:3) - pvr_J2000(1:3))
-            rhoDot = dot_product(pvt_J2000(4:6) - pvr_J2000(4:6), pvt_J2000(1:3) - pvr_J2000(1:3))/rho
-            dataTable(nData, 1:4) = (/A, h, rho, rhoDot/)
-            
+            dataTable(nData, 1) = rhoDot
+
         case(OBS_TYPE_RANGING)
             rho = norm2(pvt_J2000(1:3) - pvr_J2000(1:3))
             dataTable(nData, 1) = rho
@@ -820,12 +813,12 @@
                 timeTable(nData) = timeAdd(t, clkErrR/86400d0)
             endif
 
-        case(OBS_TYPE_GNSS)
+        case(OBS_TYPE_POSITION_VELOCITY)
             dataTable(nData, 1:6) = pvt_J2000(1:6)
-            
+
         case(OBS_TYPE_POSITION)
             dataTable(nData, 1:3) = pvt_J2000(1:3)
-            
+
         case(OBS_TYPE_AZIMUTH_ELEVATION)
             dataTable(nData, 1:2) = (/A, h/)
             
@@ -960,17 +953,12 @@
         nData = nData + 1
         select case(access%obsType)
             
-        case(OBS_TYPE_ALPHA_DELTA)
+        case(OBS_TYPE_RA_DEC)
             dr = pvt_J2000(1:3) - pvr_J2000(1:3)
             delta = dasin(dr(3)/norm2(dr)) ! get delta from sin(delta), -pi/2 <= delta <= pi/2
             call get_angle(dr(2)/norm2(dr(1:2)), &
                 &   dr(1)/norm2(dr(1:2)), Alpha) ! get alpha from sinAlpha and cosAlpha, 0 <= Alpha < 2*pi
             dataTable(nData, 1:2) = (/alpha, delta/)
-            timeTable(nData) = t
-        case(OBS_TYPE_RADAR)
-            rho = norm2(pvt_J2000(1:3) - pvr_J2000(1:3))
-            rhoDot = dot_product(pvt_J2000(4:6) - pvr_J2000(4:6), pvt_J2000(1:3) - pvr_J2000(1:3))/rho
-            dataTable(nData, 1:4) = (/A, h, rho, rhoDot/)
             timeTable(nData) = t
         case(OBS_TYPE_RANGING)
             rho = norm2(pvt_J2000(1:3) - pvr_J2000(1:3))
@@ -994,16 +982,16 @@
                 timeTable(nData) = timeAdd(t, clkErrR/86400d0)
             endif
 
-        case(OBS_TYPE_GNSS)
+        case(OBS_TYPE_POSITION_VELOCITY)
             dataTable(nData, 1:6) = pvt_J2000(1:6)
             timeTable(nData) = t
         case(OBS_TYPE_POSITION)
             dataTable(nData, 1:3) = pvt_J2000(1:3)
             timeTable(nData) = t
-        case(OBS_TYPE_RANGE_DOPPLER)
+        case(OBS_TYPE_RANGERATE)
             rho = norm2(pvt_J2000(1:3) - pvr_J2000(1:3))
             rhoDot = dot_product(pvt_J2000(4:6) - pvr_J2000(4:6), pvt_J2000(1:3) - pvr_J2000(1:3))/rho
-            dataTable(nData, 1:2) = (/rho, rhoDot/)
+            dataTable(nData, 1) = rhoDot
             timeTable(nData) = t
         case default
             print*, "error @subroutine calObsData2."
@@ -1062,14 +1050,14 @@
         nData = nData + 1
         select case(access%obsType)
 
-        case(OBS_TYPE_GNSS)
+        case(OBS_TYPE_POSITION_VELOCITY)
             dataTable(nData, 1:6) = pvt_J2000(1:6)
             timeTable(nData) = t
         case(OBS_TYPE_POSITION)
             dataTable(nData, 1:3) = pvt_J2000(1:3)
             timeTable(nData) = t
         case default
-            print*, "error @subroutine calObsData1."
+            print*, "error @subroutine calObsData3."
             print*, "invalid obsType, obsType = ", access%obsType
         end select
                 
@@ -1167,43 +1155,34 @@
     dr = pvt_J2000(1:3) - pvr_J2000(1:3)
     
     select case(obsType)
-    case(OBS_TYPE_ALPHA_DELTA)
-        ! Angular measurements (right ascension, declination)
+    case(OBS_TYPE_RA_DEC)
+        ! Right ascension and declination
         delta = dasin(dr(3)/norm2(dr)) ! declination
         call get_angle(dr(2)/norm2(dr(1:2)), dr(1)/norm2(dr(1:2)), alpha) ! right ascension
         data1(1:2) = (/alpha, delta/)
-        
-    case(OBS_TYPE_RANGE_DOPPLER)
-        ! Range and range-rate
+
+    case(OBS_TYPE_RANGERATE)
+        ! Range-rate only
         rho = norm2(dr)
         rhoDot = dot_product(pvt_J2000(4:6) - pvr_J2000(4:6), dr)/rho
-        data1(1:2) = (/rho, rhoDot/)
-        
-    case(OBS_TYPE_RADAR)
-        ! Full radar measurements (azimuth, elevation, range, range-rate)
-        call ECI2ECF_IAU1980_positionVelocity(t, pvt_J2000(1:3), pvt_J2000(4:6), pvt_fixed(1:3), pvt_fixed(4:6))
-        call ECF2horizon_position(longi, lati, pvt_fixed(1:3) - pvr_fixed(1:3), drHorizon)
-        h = dasin(drHorizon(3)/norm2(drHorizon))
-        call get_angle(drHorizon(2)/norm2(drHorizon(1:2)), drHorizon(1)/norm2(drHorizon(1:2)), A)
-        rho = norm2(dr)
-        rhoDot = dot_product(pvt_J2000(4:6) - pvr_J2000(4:6), dr)/rho
-        data1(1:4) = (/A, h, rho, rhoDot/)
-        
+        data1(1) = rhoDot
+
     case(OBS_TYPE_RANGING)
         ! Range only
         data1(1) = norm2(dr)
-        
-    case(OBS_TYPE_GNSS)
-        ! GNSS measurements (position and velocity)
+
+    case(OBS_TYPE_POSITION_VELOCITY)
+        ! Position and velocity
         data1(1:6) = pvt_J2000(1:6)
-        
+
     case(OBS_TYPE_POSITION)
         ! Position only
         data1(1:3) = pvt_J2000(1:3)
-        
+
     case(OBS_TYPE_AZIMUTH_ELEVATION)
         ! Azimuth and elevation
         call ECI2ECF_IAU1980_positionVelocity(t, pvt_J2000(1:3), pvt_J2000(4:6), pvt_fixed(1:3), pvt_fixed(4:6))
+        call ECI2ECF_IAU1980_positionVelocity(t, pvr_J2000(1:3), pvr_J2000(4:6), pvr_fixed(1:3), pvr_fixed(4:6))
         call ECF2horizon_position(longi, lati, pvt_fixed(1:3) - pvr_fixed(1:3), drHorizon)
         h = dasin(drHorizon(3)/norm2(drHorizon))
         call get_angle(drHorizon(2)/norm2(drHorizon(1:2)), drHorizon(1)/norm2(drHorizon(1:2)), A)
@@ -1223,7 +1202,7 @@
     !   station - ground station object (type_station)
     !   access  - access object with azimuth/elevation data (type_access)
     ! Output:
-    !   access%obsType changed to OBS_TYPE_ALPHA_DELTA
+    !   access%obsType changed to OBS_TYPE_RA_DEC
     !   access%dataTable converted from (Azi, Ele) to (RA, DEC)
     !
     ! Conversion steps:
@@ -1323,7 +1302,7 @@
     enddo
     
     ! Update observation type
-    access%obsType = OBS_TYPE_ALPHA_DELTA
+    access%obsType = OBS_TYPE_RA_DEC
     
     ! Note: npe remains 2 (RA and DEC), so no need to change
     

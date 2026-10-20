@@ -114,7 +114,7 @@ program  batch_GNSS
                      fromNum = 1, &
                      toType = OBJECT_TYPE_STATION, &
                      toNum = 1, &
-                     obsType = OBS_TYPE_GNSS, &
+                     obsType = OBS_TYPE_POSITION_VELOCITY, &
                      minEle = 10d0)
 
     ! Set observation error standard deviation (5e-6 rad ~ 1 arcsec)

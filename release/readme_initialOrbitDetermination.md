@@ -34,14 +34,15 @@ initialOrbitDetermination.exe <longitude> <latitude> <altitude> <obs_type> <data
 | `longitude` | Station longitude | Degrees (-180 to 180) | 116.385 |
 | `latitude` | Station latitude | Degrees (-90 to 90) | 39.905 |
 | `altitude` | Station altitude | Meters | 50.0 |
-| `obs_type` | Observation type | String (AH, AD, RRD) | "AH" |
+| `obs_type` | Observation type | String (AH, AD, RR) | "AH" |
 | `data_file` | Observation data file path | String | "observations.dat" |
 
 ### Observation Types
 
-- **AH**: Azimuth and Elevation measurements
-- **AD**: Right Ascension and Declination measurements  
-- **RRD**: Range and Range-Rate measurements (Note: Limited implementation)
+- **AH**: Azimuth and Elevation measurements (`OBS_TYPE_AZIMUTH_ELEVATION`)
+- **AD**: Right Ascension and Declination measurements (`OBS_TYPE_RA_DEC`)
+- **RR**: Range-rate measurements (`OBS_TYPE_RANGERATE`). The General Laplace
+  method needs angular observations, so this input is rejected as unsupported.
 
 ### Example
 
@@ -59,29 +60,31 @@ This example will:
 
 The observation data file should contain time-stamped measurement data. The specific format depends on the observation type:
 
+All formats start with the epoch as `MJD_day MJD_sec`, followed by the
+observables (degrees for angles, km or km/s for range quantities). `#`-prefixed
+header lines and blank lines are skipped.
+
 ### AH Format (Azimuth/Elevation)
 ```
-YYYY MM DD HH MM SS.SSS AZIMUTH ELEVATION
+MJD_day MJD_sec AZIMUTH ELEVATION
 ```
-- Time: Year, Month, Day, Hour, Minute, Second
-- Azimuth: Degrees
-- Elevation: Degrees
+- Azimuth, Elevation: Degrees
 
 ### AD Format (Right Ascension/Declination)
 ```
-YYYY MM DD HH MM SS.SSS RA DEC
+MJD_day MJD_sec RA DEC
 ```
-- Time: Year, Month, Day, Hour, Minute, Second  
-- RA: Right Ascension (degrees)
-- DEC: Declination (degrees)
+- RA, DEC: Degrees
 
-### RRD Format (Range/Range-Rate)
+### RR Format (Range-rate)
 ```
-YYYY MM DD HH MM SS.SSS RANGE RANGE_RATE
+MJD_day MJD_sec RANGE_RATE
 ```
-- Time: Year, Month, Day, Hour, Minute, Second
-- Range: Kilometers
-- Range-Rate: km/s
+- Range-rate: km/s
+
+Reading is fault tolerant: a malformed line is reported and skipped. A
+`#`-header written by `type_access%saveData` also restores the observation
+type and the device names.
 
 ## Output
 
@@ -120,7 +123,7 @@ This program uses the General Laplace method for initial orbit determination, wh
 
 1. Ensure the observation data file exists and is properly formatted
 2. Station coordinates should be in the WGS84 reference frame
-3. For RRD observation type, functionality may be limited in current implementation
+3. RR (range-rate) input is rejected: the General Laplace method requires angles
 4. The minimum elevation angle is set to 5° by default
 5. Results provide an initial orbit estimate; refinement may be needed for precise applications
 
